@@ -155,7 +155,6 @@ class DbService {
     if (this.currentUser) {
       this.currentUser.roomId = room.id;
       this.currentUser.role = 'MEMBER';
-      // Crucial: Wait for the profile update in the database so getRoomMembers sees the user immediately
       await this.setCurrentUser(this.currentUser);
     }
     
@@ -263,7 +262,10 @@ class DbService {
     if (task && user) {
       const { error } = await supabase
         .from('tasks')
-        .update({ status: 'COMPLETED' })
+        .update({ 
+          status: 'COMPLETED',
+          completed_at: Date.now() // Track completion time
+        })
         .eq('id', taskId);
         
       if (error) return false;
@@ -292,19 +294,31 @@ class DbService {
       
     if (error) return [];
     
-    return data.map((d: any) => ({
-      id: d.id,
-      roomId: d.room_id,
-      name: d.name,
-      description: d.description,
-      deadline: d.deadline,
-      assignedToId: d.assigned_to_id,
-      assignedToName: d.assigned_to_name,
-      createdById: d.created_by_id,
-      createdByName: d.created_by_name,
-      status: d.status,
-      createdAt: d.created_at
-    }));
+    const now = Date.now();
+    const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+
+    return data
+      .map((d: any) => ({
+        id: d.id,
+        roomId: d.room_id,
+        name: d.name,
+        description: d.description,
+        deadline: d.deadline,
+        assignedToId: d.assigned_to_id,
+        assignedToName: d.assigned_to_name,
+        createdById: d.created_by_id,
+        createdByName: d.created_by_name,
+        status: d.status,
+        createdAt: d.created_at,
+        completedAt: d.completed_at
+      }))
+      // Filter out completed tasks older than 48 hours
+      .filter(task => {
+        if (task.status === 'COMPLETED' && task.completedAt) {
+          return (now - task.completedAt) < FORTY_EIGHT_HOURS_MS;
+        }
+        return true;
+      });
   }
 
   async getLogs(roomId: string): Promise<TaskLog[]> {
@@ -322,9 +336,9 @@ class DbService {
       taskName: d.task_name,
       roomId: d.room_id,
       fromUserId: d.from_user_id,
-      fromUserName: d.from_user_name, // Fixed mapping
+      fromUserName: d.from_user_name,
       toUserId: d.to_user_id,
-      toUserName: d.to_user_name, // Fixed mapping
+      toUserName: d.to_user_name,
       action: d.action,
       timestamp: d.timestamp
     }));

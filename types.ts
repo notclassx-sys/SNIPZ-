@@ -32,6 +32,7 @@ export interface Task {
   createdByName: string;
   status: TaskStatus;
   createdAt: number;
+  completedAt?: number;
 }
 
 export interface Message {
