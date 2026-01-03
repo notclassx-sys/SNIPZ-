@@ -31,16 +31,30 @@ const Chat: React.FC<ChatProps> = ({ user }) => {
 
   const loadMessages = async () => {
     if (!user.roomId) return;
-    const msgs = await db.getMessages(user.roomId);
-    setMessages(msgs);
+    try {
+      const msgs = await db.getMessages(user.roomId);
+      setMessages(msgs);
+    } catch (err) {
+      console.error("Failed to load messages:", err);
+    }
   };
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!inputText.trim() || !user.roomId) return;
-    const sent = await db.addMessage(user.roomId, user.id, inputText);
-    setInputText('');
-    if (sent) loadMessages();
+    const messageText = inputText.trim();
+    if (!messageText || !user.roomId) return;
+    
+    setInputText(''); // Optimistic UI clear
+    try {
+      const sent = await db.addMessage(user.roomId, user.id, user.name, messageText);
+      if (sent) {
+        await loadMessages();
+      } else {
+        console.error("Message was not sent successfully (no record returned)");
+      }
+    } catch (err) {
+      console.error("Critical chat error:", err);
+    }
   };
 
   const startRecording = async () => {
@@ -61,7 +75,7 @@ const Chat: React.FC<ChatProps> = ({ user }) => {
         reader.onloadend = async () => {
           const base64Audio = reader.result as string;
           if (user.roomId) {
-            await db.addMessage(user.roomId, user.id, undefined, base64Audio);
+            await db.addMessage(user.roomId, user.id, user.name, undefined, base64Audio);
             loadMessages();
           }
         };

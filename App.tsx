@@ -32,6 +32,20 @@ const App: React.FC = () => {
     checkAuth();
   }, []);
 
+  // Heartbeat to keep user active in "Live Status"
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    // Initial heartbeat
+    db.heartbeat(user.id);
+    
+    const hbInterval = setInterval(() => {
+      db.heartbeat(user.id);
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(hbInterval);
+  }, [user?.id]);
+
   const handleAuth = async () => {
     setAuthError('');
     if (authMode === 'SIGN_UP' && (!name || !agreedToTerms)) {

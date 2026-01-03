@@ -8,6 +8,18 @@ interface DashboardProps {
   user: User;
 }
 
+const formatTimeAgo = (timestamp: number) => {
+  const diff = Date.now() - timestamp;
+  if (diff < 15000) return 'Just now';
+  if (diff < 60000) return 'Online';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [stats, setStats] = useState({
     total: 0,
@@ -128,21 +140,29 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
       {user.role === 'ADMIN' && (
         <div className="pt-6">
-          <h3 className="text-xl font-extrabold text-slate-900 mb-4">Live Status</h3>
+          <h3 className="text-xl font-extrabold text-slate-900 mb-4 flex items-center justify-between">
+            Live Status
+            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          </h3>
           <div className="space-y-3">
-            {members.map((m, i) => (
+            {members.sort((a,b) => b.lastActive - a.lastActive).map((m, i) => (
               <div key={m.id} className="flex items-center justify-between p-4 rounded-3xl bg-white border border-gray-100 shadow-sm animate-fade-up" style={{animationDelay: `${i*0.1}s`}}>
                 <div className="flex items-center gap-4">
                   <img src={m.avatar} className="w-12 h-12 rounded-2xl border-2 border-green-50 shadow-sm" alt="" />
                   <div>
                     <div className="text-base font-bold text-slate-800">{m.name}</div>
-                    <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{m.role}</div>
+                    <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                      {m.role} {m.id === user.id && "• YOU"}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-col items-end">
-                   <div className={`w-3 h-3 rounded-full mb-1 ${Date.now() - m.lastActive < 60000 ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-gray-300'}`}></div>
-                   <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
-                      {Date.now() - m.lastActive < 60000 ? 'Active' : 'Offline'}
+                   <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] text-slate-500 font-bold">{formatTimeAgo(m.lastActive)}</span>
+                      <div className={`w-2.5 h-2.5 rounded-full ${Date.now() - m.lastActive < 60000 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-gray-300'}`}></div>
+                   </div>
+                   <span className="text-[9px] text-slate-300 font-black uppercase tracking-tighter">
+                      Activity Monitor
                    </span>
                 </div>
               </div>

@@ -24,6 +24,14 @@ class DbService {
     if (error) console.error('Error updating user profile:', error);
   }
 
+  async heartbeat(userId: string) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ last_active: Date.now() })
+      .eq('id', userId);
+    if (error) console.error('Heartbeat failed:', error);
+  }
+
   async signUp(email: string, password: string, name: string): Promise<User | null> {
     const { data: existing } = await supabase.from('profiles').select('*').eq('email', email).maybeSingle();
     if (existing) return null;
@@ -344,15 +352,13 @@ class DbService {
     }));
   }
 
-  async addMessage(roomId: string, senderId: string, text?: string, audioData?: string): Promise<Message | null> {
-    const { data: sender } = await supabase.from('profiles').select('name').eq('id', senderId).single();
-    
+  async addMessage(roomId: string, senderId: string, senderName: string, text?: string, audioData?: string): Promise<Message | null> {
     const { data, error } = await supabase
       .from('messages')
       .insert([{
         room_id: roomId,
         sender_id: senderId,
-        sender_name: sender?.name || 'Unknown',
+        sender_name: senderName,
         text: text || null,
         audio_data: audioData || null,
         type: audioData ? 'audio' : 'text',
@@ -361,7 +367,10 @@ class DbService {
       .select()
       .single();
       
-    if (error) return null;
+    if (error) {
+      console.error('Supabase Chat Error:', error);
+      return null;
+    }
     
     return {
       id: data.id,
