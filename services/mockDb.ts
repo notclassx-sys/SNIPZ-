@@ -213,7 +213,7 @@ class DbService {
     const task: Task = {
       ...taskData,
       id: data[0].id,
-      createdAt: new Date(data[0].created_at).getTime()
+      createdAt: new Date(data[0].created_at || Date.now()).getTime()
     };
 
     await this.addLog({
@@ -314,7 +314,7 @@ class DbService {
         createdById: d.created_by_id,
         createdByName: d.created_by_name,
         status: d.status,
-        createdAt: new Date(d.created_at).getTime(),
+        createdAt: new Date(d.created_at || Date.now()).getTime(),
         completedAt: d.completed_at ? new Date(d.completed_at).getTime() : undefined
       }))
       .filter(task => {
@@ -326,24 +326,27 @@ class DbService {
   }
 
   async getLogs(roomId: string): Promise<TaskLog[]> {
-    const { data, error } = await supabase
-      .from('task_logs')
-      .select('*')
-      .eq('room_id', roomId)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      // Fallback for older schemas that might use 'timestamp'
-      const { data: fallbackData } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('task_logs')
         .select('*')
         .eq('room_id', roomId)
-        .order('timestamp', { ascending: false });
-      if (fallbackData) return fallbackData.map(d => this.mapLog(d));
-      return [];
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      return data.map((d: any) => this.mapLog(d));
+    } catch (e) {
+      // Fallback sorting
+      const { data: fallbackData } = await supabase
+        .from('task_logs')
+        .select('*')
+        .eq('room_id', roomId);
+      
+      if (!fallbackData) return [];
+      return fallbackData
+        .sort((a, b) => new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime())
+        .map(d => this.mapLog(d));
     }
-    
-    return data.map((d: any) => this.mapLog(d));
   }
 
   private mapLog(d: any): TaskLog {
@@ -362,58 +365,58 @@ class DbService {
   }
 
   async addMessage(roomId: string, senderId: string, senderName: string, text?: string, audioData?: string): Promise<Message | null> {
-    const { data, error } = await supabase
-      .from('messages')
-      .insert([{
+    // Attempt 1: Full payload (audio & type support)
+    const payload: any = {
+      room_id: roomId,
+      sender_id: senderId,
+      sender_name: senderName,
+      text: text || null,
+      audio_data: audioData || null,
+      type: audioData ? 'audio' : 'text'
+    };
+
+    let { data, error } = await supabase.from('messages').insert([payload]).select();
+
+    // Fallback if schema doesn't have audio_data/type columns (Error 400 / PGRST204)
+    if (error && (error.message.includes('audio_data') || error.message.includes('type'))) {
+      console.warn('DB Schema missing audio columns, falling back to basic text insert.');
+      const minimalPayload = {
         room_id: roomId,
         sender_id: senderId,
         sender_name: senderName,
-        text: text || null,
-        audio_data: audioData || null,
-        type: audioData ? 'audio' : 'text'
-      }])
-      .select();
-      
+        text: text || "[Audio Message - Not supported by DB schema]"
+      };
+      const retry = await supabase.from('messages').insert([minimalPayload]).select();
+      data = retry.data;
+      error = retry.error;
+    }
+
     if (error) {
-      console.error('Supabase Chat Insert Error:', error.message, '| Details:', error.details, '| Hint:', error.hint);
+      console.error('Final Chat Error:', error.message);
       return null;
     }
     
     if (!data?.[0]) return null;
 
-    const d = data[0];
-    return {
-      id: d.id,
-      roomId: d.room_id,
-      senderId: d.sender_id,
-      senderName: d.sender_name,
-      text: d.text,
-      audioData: d.audio_data,
-      type: d.type,
-      timestamp: new Date(d.created_at).getTime()
-    };
+    return this.mapMessage(data[0]);
   }
 
   async getMessages(roomId: string): Promise<Message[]> {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('room_id', roomId)
-      .order('created_at', { ascending: true });
-      
-    if (error) {
-      console.error('Supabase Chat Fetch Error:', error.message);
-      // Fallback attempt for older schemas
-      const { data: fallback } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('room_id', roomId)
-        .order('timestamp', { ascending: true });
-      if (fallback) return fallback.map(d => this.mapMessage(d));
+        .eq('room_id', roomId);
+      
+      if (error) throw error;
+      
+      return data
+        .sort((a, b) => new Date(a.created_at || a.timestamp || 0).getTime() - new Date(b.created_at || b.timestamp || 0).getTime())
+        .map(d => this.mapMessage(d));
+    } catch (e) {
+      console.error('Supabase Chat Fetch Critical:', e);
       return [];
     }
-    
-    return data.map((d: any) => this.mapMessage(d));
   }
 
   private mapMessage(d: any): Message {
@@ -424,7 +427,7 @@ class DbService {
       senderName: d.sender_name,
       text: d.text,
       audioData: d.audio_data,
-      type: d.type,
+      type: d.type || (d.audio_data ? 'audio' : 'text'),
       timestamp: new Date(d.created_at || d.timestamp || Date.now()).getTime()
     };
   }
