@@ -2,6 +2,11 @@
 import { User, Room, Task, Message, TaskLog, UserRole } from '../types';
 import { supabase } from './supabase';
 
+export interface DbResult<T> {
+  data: T | null;
+  error?: string;
+}
+
 class DbService {
   private currentUser: User | null = null;
 
@@ -18,7 +23,6 @@ class DbService {
       role: user.role
     };
     
-    // Ensure room_id is synced to DB if present in local state
     if (user.roomId) {
       payload.room_id = user.roomId;
     }
@@ -32,9 +36,7 @@ class DbService {
 
   async heartbeat(userId: string, roomId?: string) {
     if (!userId) return;
-    
     const payload: any = { last_active: Date.now() };
-    // Maintain room association during heartbeat
     if (roomId) payload.room_id = roomId;
     
     const { error } = await supabase
@@ -42,9 +44,7 @@ class DbService {
       .update(payload)
       .eq('id', userId);
       
-    if (error) {
-      console.error('Heartbeat update failed:', error.message);
-    }
+    if (error) console.error('Heartbeat failed:', error.message);
   }
 
   async signUp(email: string, password: string, name: string): Promise<User | null> {
@@ -72,11 +72,7 @@ class DbService {
         password: password
       }]);
 
-    if (error) {
-      console.error('Signup DB Error:', error.message);
-      return null;
-    }
-    
+    if (error) return null;
     await this.setCurrentUser(newUser);
     return newUser;
   }
@@ -121,108 +117,54 @@ class DbService {
 
   async getRoom(roomId: string): Promise<Room | null> {
     if (!roomId) return null;
-    const { data, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('id', roomId)
-      .maybeSingle();
-    
+    const { data, error } = await supabase.from('rooms').select('*').eq('id', roomId).maybeSingle();
     if (error || !data) return null;
-    
-    return {
-      id: data.id,
-      name: data.name,
-      adminId: data.admin_id,
-      inviteCode: data.invite_code
-    };
+    return { id: data.id, name: data.name, adminId: data.admin_id, inviteCode: data.invite_code };
   }
 
   async createRoom(name: string, admin: User): Promise<Room | null> {
-    const roomPayload = {
-      name,
-      admin_id: admin.id,
-      invite_code: Math.random().toString(36).substr(2, 6).toUpperCase()
-    };
-    
-    const { data, error } = await supabase
-      .from('rooms')
-      .insert([roomPayload])
-      .select();
-      
-    if (error || !data?.[0]) {
-      console.error('Error creating room record:', error?.message);
-      return null;
-    }
+    const roomPayload = { name, admin_id: admin.id, invite_code: Math.random().toString(36).substr(2, 6).toUpperCase() };
+    const { data, error } = await supabase.from('rooms').insert([roomPayload]).select();
+    if (error || !data?.[0]) return null;
 
-    const newRoom: Room = {
-      id: data[0].id,
-      name: data[0].name,
-      adminId: data[0].admin_id,
-      inviteCode: data[0].invite_code
-    };
-
+    const newRoom: Room = { id: data[0].id, name: data[0].name, adminId: data[0].admin_id, inviteCode: data[0].invite_code };
     if (this.currentUser) {
       this.currentUser.roomId = newRoom.id;
       this.currentUser.role = 'ADMIN';
       await this.setCurrentUser(this.currentUser);
     }
-    
     return newRoom;
   }
 
   async joinRoom(inviteCode: string, user: User): Promise<Room | null> {
-    const { data: room, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('invite_code', inviteCode.toUpperCase())
-      .maybeSingle();
-      
-    if (error || !room) {
-      console.error('Room lookup failed:', error?.message || 'Code not found');
-      return null;
-    }
+    const { data: room, error } = await supabase.from('rooms').select('*').eq('invite_code', inviteCode.toUpperCase()).maybeSingle();
+    if (error || !room) return null;
 
     if (this.currentUser) {
       this.currentUser.roomId = room.id;
       this.currentUser.role = 'MEMBER';
       await this.setCurrentUser(this.currentUser);
     }
-    
-    return {
-      id: room.id,
-      name: room.name,
-      adminId: room.admin_id,
-      inviteCode: room.invite_code
-    };
+    return { id: room.id, name: room.name, adminId: room.admin_id, inviteCode: room.invite_code };
   }
 
   async getRoomMembers(roomId: string): Promise<User[]> {
     if (!roomId) return [];
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('room_id', roomId);
-      
-    if (error || !data) {
-      console.error('Error fetching members:', error?.message);
-      return [];
-    }
-    
+    const { data, error } = await supabase.from('profiles').select('*').eq('room_id', roomId);
+    if (error || !data) return [];
     return data.map((d: any) => ({
-      id: d.id,
-      name: d.name,
-      email: d.email,
-      avatar: d.avatar,
+      id: d.id, name: d.name, email: d.email, avatar: d.avatar,
       lastActive: typeof d.last_active === 'number' ? d.last_active : Date.now(),
-      roomId: d.room_id,
-      role: d.role
+      roomId: d.room_id, role: d.role
     }));
   }
 
-  async createTask(taskData: Omit<Task, 'id' | 'createdAt'>): Promise<Task | null> {
-    if (!taskData.roomId) {
-      console.error('CreateTask Error: No Room ID provided');
-      return null;
+  async createTask(taskData: Omit<Task, 'id' | 'createdAt'>): Promise<DbResult<Task>> {
+    if (!taskData.roomId) return { data: null, error: "Missing Room ID" };
+
+    // FORCE SYNC before creation to ensure foreign keys match
+    if (this.currentUser) {
+      await this.setCurrentUser(this.currentUser);
     }
 
     try {
@@ -242,34 +184,23 @@ class DbService {
         .select();
         
       if (error) {
-        console.error('Supabase Task Insertion Error:', error.message, error.details);
-        return null;
+        console.error('Supabase Error:', error);
+        return { data: null, error: `${error.message} (Code: ${error.code})` };
       }
       
-      if (!data?.[0]) return null;
+      if (!data?.[0]) return { data: null, error: "Insert successful but no data returned." };
 
-      const task: Task = {
-        ...taskData,
-        id: data[0].id,
-        createdAt: Date.now()
-      };
-
+      const task: Task = { ...taskData, id: data[0].id, createdAt: Date.now() };
       await this.addLog({
-        taskId: task.id,
-        taskName: task.name,
-        roomId: task.roomId,
-        fromUserId: task.createdById,
-        fromUserName: task.createdByName,
-        toUserId: task.assignedToId,
-        toUserName: task.assignedToName,
-        action: 'CREATED',
-        timestamp: Date.now()
+        taskId: task.id, taskName: task.name, roomId: task.roomId,
+        fromUserId: task.createdById, fromUserName: task.createdByName,
+        toUserId: task.assignedToId, toUserName: task.assignedToName,
+        action: 'CREATED', timestamp: Date.now()
       });
 
-      return task;
+      return { data: task };
     } catch (err: any) {
-      console.error('Critical exception in createTask:', err.message);
-      return null;
+      return { data: null, error: err.message || "Unknown exception occurred" };
     }
   }
 
@@ -279,23 +210,14 @@ class DbService {
     const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).maybeSingle();
 
     if (task && fromUser && toUser) {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ assigned_to_id: newAssigneeId, assigned_to_name: toUser.name })
-        .eq('id', taskId);
-        
+      const { error } = await supabase.from('tasks').update({ assigned_to_id: newAssigneeId, assigned_to_name: toUser.name }).eq('id', taskId);
       if (error) return false;
 
       await this.addLog({
-        taskId: task.id,
-        taskName: task.name,
-        roomId: task.room_id,
-        fromUserId: currentUserId,
-        fromUserName: fromUser.name,
-        toUserId: newAssigneeId,
-        toUserName: toUser.name,
-        action: 'PUSHED',
-        timestamp: Date.now()
+        taskId: task.id, taskName: task.name, roomId: task.room_id,
+        fromUserId: currentUserId, fromUserName: fromUser.name,
+        toUserId: newAssigneeId, toUserName: toUser.name,
+        action: 'PUSHED', timestamp: Date.now()
       });
       return true;
     }
@@ -307,28 +229,12 @@ class DbService {
     const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     
     if (task && user) {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ 
-          status: 'COMPLETED',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', taskId);
-        
-      if (error) {
-        await supabase.from('tasks').update({ status: 'COMPLETED', completed_at: Date.now() as any }).eq('id', taskId);
-      }
-
+      await supabase.from('tasks').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', taskId);
       await this.addLog({
-        taskId: task.id,
-        taskName: task.name,
-        roomId: task.room_id,
-        fromUserId: userId,
-        fromUserName: user.name,
-        toUserId: task.created_by_id,
-        toUserName: task.created_by_name,
-        action: 'COMPLETED',
-        timestamp: Date.now()
+        taskId: task.id, taskName: task.name, roomId: task.room_id,
+        fromUserId: userId, fromUserName: user.name,
+        toUserId: task.created_by_id, toUserName: task.created_by_name,
+        action: 'COMPLETED', timestamp: Date.now()
       });
       return true;
     }
@@ -337,140 +243,58 @@ class DbService {
 
   async getTasks(roomId: string): Promise<Task[]> {
     if (!roomId) return [];
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('room_id', roomId);
-      
+    const { data, error } = await supabase.from('tasks').select('*').eq('room_id', roomId);
     if (error) return [];
     
     const now = Date.now();
     const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 
-    return data
-      .map((d: any) => ({
-        id: d.id,
-        roomId: d.room_id,
-        name: d.name,
-        description: d.description,
-        deadline: d.deadline,
-        assignedToId: d.assigned_to_id,
-        assignedToName: d.assigned_to_name,
-        createdById: d.created_by_id,
-        createdByName: d.created_by_name,
-        status: d.status,
-        createdAt: new Date(d.created_at || Date.now()).getTime(),
-        completedAt: d.completed_at ? new Date(d.completed_at).getTime() : undefined
-      }))
-      .filter(task => {
-        if (task.status === 'COMPLETED' && task.completedAt) {
-          return (now - task.completedAt) < FORTY_EIGHT_HOURS_MS;
-        }
-        return true;
-      });
+    return data.map((d: any) => ({
+      id: d.id, roomId: d.room_id, name: d.name, description: d.description, deadline: d.deadline,
+      assignedToId: d.assigned_to_id, assignedToName: d.assigned_to_name,
+      createdById: d.created_by_id, createdByName: d.created_by_name, status: d.status,
+      createdAt: new Date(d.created_at || Date.now()).getTime(),
+      completedAt: d.completed_at ? new Date(d.completed_at).getTime() : undefined
+    })).filter(task => {
+      if (task.status === 'COMPLETED' && task.completedAt) return (now - task.completedAt) < FORTY_EIGHT_HOURS_MS;
+      return true;
+    });
   }
 
   async getLogs(roomId: string): Promise<TaskLog[]> {
     if (!roomId) return [];
-    const { data, error } = await supabase
-      .from('task_logs')
-      .select('*')
-      .eq('room_id', roomId);
-      
+    const { data, error } = await supabase.from('task_logs').select('*').eq('room_id', roomId);
     if (error || !data) return [];
-    
-    return data
-      .map((d: any) => this.mapLog(d))
-      .sort((a, b) => b.timestamp - a.timestamp);
-  }
-
-  private mapLog(d: any): TaskLog {
-    return {
-      id: d.id,
-      taskId: d.task_id,
-      taskName: d.task_name,
-      roomId: d.room_id,
-      fromUserId: d.from_user_id,
-      fromUserName: d.from_user_name,
-      toUserId: d.to_user_id,
-      toUserName: d.to_user_name,
-      action: d.action,
+    return data.map((d: any) => ({
+      id: d.id, taskId: d.task_id, taskName: d.task_name, roomId: d.room_id,
+      fromUserId: d.from_user_id, fromUserName: d.from_user_name,
+      toUserId: d.to_user_id, toUserName: d.to_user_name, action: d.action,
       timestamp: typeof d.timestamp === 'number' ? d.timestamp : new Date(d.created_at || d.timestamp || Date.now()).getTime()
-    };
+    })).sort((a: any, b: any) => b.timestamp - a.timestamp);
   }
 
   async addMessage(roomId: string, senderId: string, senderName: string, text?: string, audioData?: string): Promise<Message | null> {
-    const now = Date.now();
-    
-    const payload: any = {
-      room_id: roomId,
-      sender_id: senderId,
-      sender_name: senderName,
-      text: text || null,
-      audio_data: audioData || null,
-      type: audioData ? 'audio' : 'text',
-      timestamp: now
-    };
-
+    const payload: any = { room_id: roomId, sender_id: senderId, sender_name: senderName, text: text || null, audio_data: audioData || null, type: audioData ? 'audio' : 'text', timestamp: Date.now() };
     const { data, error } = await supabase.from('messages').insert([payload]).select();
-
-    if (error) {
-      console.error('Chat Insert Error:', error.message);
-      return null;
-    }
-    
-    if (!data?.[0]) return null;
-
-    return this.mapMessage(data[0]);
+    if (error || !data?.[0]) return null;
+    return { id: data[0].id, roomId: data[0].room_id, senderId: data[0].sender_id, senderName: data[0].sender_name, text: data[0].text, audioData: data[0].audio_data, type: data[0].type, timestamp: typeof data[0].timestamp === 'number' ? data[0].timestamp : Date.now() };
   }
 
   async getMessages(roomId: string): Promise<Message[]> {
     if (!roomId) return [];
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('room_id', roomId);
-      
-      if (error) throw error;
-      
-      return data
-        .sort((a, b) => {
-          const timeA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.created_at || a.timestamp || 0).getTime();
-          const timeB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.created_at || b.timestamp || 0).getTime();
-          return timeA - timeB;
-        })
-        .map(d => this.mapMessage(d));
-    } catch (e) {
-      console.error('Chat Fetch Error:', e);
-      return [];
-    }
-  }
-
-  private mapMessage(d: any): Message {
-    return {
-      id: d.id,
-      roomId: d.room_id,
-      senderId: d.sender_id,
-      senderName: d.sender_name,
-      text: d.text,
-      audioData: d.audio_data,
-      type: d.type || (d.audio_data ? 'audio' : 'text'),
-      timestamp: typeof d.timestamp === 'number' ? d.timestamp : new Date(d.created_at || d.timestamp || Date.now()).getTime()
-    };
+    const { data, error } = await supabase.from('messages').select('*').eq('room_id', roomId);
+    if (error) return [];
+    return data.sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0)).map((d: any) => ({
+      id: d.id, roomId: d.room_id, senderId: d.sender_id, senderName: d.sender_name, text: d.text, audioData: d.audio_data, type: d.type || 'text', timestamp: typeof d.timestamp === 'number' ? d.timestamp : Date.now()
+    }));
   }
 
   private async addLog(log: Omit<TaskLog, 'id'>) {
     await supabase.from('task_logs').insert([{
-      task_id: log.taskId,
-      task_name: log.taskName,
-      room_id: log.roomId,
-      from_user_id: log.fromUserId,
-      from_user_name: log.fromUserName,
-      to_user_id: log.toUserId,
-      to_user_name: log.toUserName,
-      action: log.action,
-      timestamp: log.timestamp
+      task_id: log.taskId, task_name: log.taskName, room_id: log.roomId,
+      from_user_id: log.fromUserId, from_user_name: log.fromUserName,
+      to_user_id: log.toUserId, to_user_name: log.toUserName,
+      action: log.action, timestamp: log.timestamp
     }]);
   }
 

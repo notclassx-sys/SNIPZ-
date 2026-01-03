@@ -18,7 +18,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Create Task Form State
   const [newTask, setNewTask] = useState({
     name: '',
     description: '',
@@ -38,7 +37,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
     try {
       const allTasks = await db.getTasks(user.roomId);
       setTasks(mode === 'MY' ? allTasks.filter(t => t.assignedToId === user.id) : allTasks);
-      
       const roomMembers = await db.getRoomMembers(user.roomId);
       setMembers(roomMembers);
     } catch (e) {
@@ -50,12 +48,12 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
 
   const handleCreateTask = async () => {
     if (!newTask.name || !newTask.assignedToId || !newTask.deadline) {
-      alert("Required: Title, Assignee, and Deadline.");
+      alert("Missing info: Title, Assignee, and Deadline are required.");
       return;
     }
     
     if (!user.roomId) {
-      alert("Session Error: No Room ID found. Try logging out and back in.");
+      alert("Session Error: No Room ID found.");
       return;
     }
     
@@ -63,7 +61,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
     const assignedUser = members.find(m => m.id === newTask.assignedToId);
     
     try {
-      const created = await db.createTask({
+      const result = await db.createTask({
         roomId: user.roomId,
         name: newTask.name,
         description: newTask.description,
@@ -75,16 +73,16 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         status: 'PENDING'
       });
 
-      if (created) {
+      if (result.data) {
         setShowCreate(false);
         setNewTask({ name: '', description: '', deadline: '', assignedToId: '' });
         await loadData();
       } else {
-        alert("Failed to create task. Database rejected the assignment. Please ensure the teammate has joined this room properly.");
+        // SHOW ACTUAL DB ERROR TO THE USER
+        alert(`DATABASE ERROR: ${result.error}\n\nThis usually means a column is missing in your Supabase table or RLS is blocking the insert.`);
       }
-    } catch (e) {
-      console.error("Task creation crash:", e);
-      alert("Error saving task. Check developer console for details.");
+    } catch (e: any) {
+      alert(`CRITICAL ERROR: ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -202,11 +200,9 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         )}
       </div>
 
-      {/* Modal: Create Task - REDESIGNED FOR CLEAR VISIBILITY & SCROLLING */}
       {showCreate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-[2rem] flex flex-col max-h-[85vh] shadow-2xl animate-scale-in">
-            {/* Modal Header - Fixed at top */}
+          <div className="w-full max-w-lg bg-white rounded-[2rem] flex flex-col max-h-[90vh] shadow-2xl animate-scale-in">
             <div className="p-5 border-b border-gray-100 flex justify-between items-center">
               <div>
                 <h3 className="text-xl font-black text-slate-900 tracking-tight">Assign Task</h3>
@@ -217,7 +213,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
               </button>
             </div>
             
-            {/* Modal Body - Scrollable content area */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
               <div>
                 <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Task Title</label>
@@ -262,9 +257,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   >
                     <option value="">Choose team member...</option>
                     {members.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.email})
-                      </option>
+                      <option key={m.id} value={m.id}>{m.name} ({m.email})</option>
                     ))}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-[10px]">
@@ -285,7 +278,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
               </div>
             </div>
 
-            {/* Modal Footer - Action button */}
             <div className="p-5 border-t border-gray-100">
               <button 
                 onClick={handleCreateTask}
@@ -299,7 +291,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         </div>
       )}
 
-      {/* Modal: Push Task */}
       {showPush && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-white rounded-[2rem] p-6 shadow-2xl animate-scale-in">
@@ -318,16 +309,8 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   </div>
                 </button>
               ))}
-              {members.filter(m => m.id !== user.id).length === 0 && (
-                <p className="text-slate-400 text-[10px] font-bold text-center py-6">No other members active</p>
-              )}
             </div>
-            <button 
-              onClick={() => setShowPush(null)}
-              className="w-full mt-6 py-3 bg-white border border-gray-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest btn-bounce"
-            >
-              Cancel
-            </button>
+            <button onClick={() => setShowPush(null)} className="w-full mt-6 py-3 bg-white border border-gray-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest btn-bounce">Cancel</button>
           </div>
         </div>
       )}
