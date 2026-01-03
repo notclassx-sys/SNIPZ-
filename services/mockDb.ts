@@ -16,7 +16,7 @@ class DbService {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
-        last_active: new Date().toISOString(),
+        last_active: Date.now(), // BigInt compatible
         room_id: user.roomId || null,
         role: user.role
       });
@@ -27,9 +27,11 @@ class DbService {
   async heartbeat(userId: string) {
     const { error } = await supabase
       .from('profiles')
-      .update({ last_active: new Date().toISOString() })
+      .update({ last_active: Date.now() }) // BigInt compatible
       .eq('id', userId);
-    if (error) console.error('Heartbeat failed:', error);
+    if (error) {
+      console.error('Heartbeat failed:', error);
+    }
   }
 
   async signUp(email: string, password: string, name: string): Promise<User | null> {
@@ -52,7 +54,7 @@ class DbService {
         name: newUser.name,
         email: newUser.email,
         avatar: newUser.avatar,
-        last_active: new Date().toISOString(),
+        last_active: Date.now(),
         role: newUser.role,
         password: password
       }]);
@@ -78,7 +80,8 @@ class DbService {
       name: data.name,
       email: data.email,
       avatar: data.avatar,
-      lastActive: new Date(data.last_active || Date.now()).getTime(),
+      // Handle both number (bigint) and string (fallback)
+      lastActive: typeof data.last_active === 'number' ? data.last_active : new Date(data.last_active || Date.now()).getTime(),
       roomId: data.room_id,
       role: data.role
     };
@@ -141,7 +144,6 @@ class DbService {
     if (this.currentUser) {
       this.currentUser.roomId = newRoom.id;
       this.currentUser.role = 'ADMIN';
-      // Force update of the profile record in Supabase to link room_id
       await this.setCurrentUser(this.currentUser);
     }
     
@@ -163,7 +165,6 @@ class DbService {
     if (this.currentUser) {
       this.currentUser.roomId = room.id;
       this.currentUser.role = 'MEMBER';
-      // Force update of the profile record in Supabase to link room_id
       await this.setCurrentUser(this.currentUser);
     }
     
@@ -188,7 +189,7 @@ class DbService {
       name: d.name,
       email: d.email,
       avatar: d.avatar,
-      lastActive: new Date(d.last_active || Date.now()).getTime(),
+      lastActive: typeof d.last_active === 'number' ? d.last_active : new Date(d.last_active || Date.now()).getTime(),
       roomId: d.room_id,
       role: d.role
     }));
@@ -351,7 +352,7 @@ class DbService {
       toUserId: d.to_user_id,
       toUserName: d.to_user_name,
       action: d.action,
-      timestamp: new Date(d.created_at || d.timestamp || Date.now()).getTime()
+      timestamp: typeof d.timestamp === 'number' ? d.timestamp : new Date(d.created_at || d.timestamp || Date.now()).getTime()
     };
   }
 
@@ -403,7 +404,11 @@ class DbService {
       if (error) throw error;
       
       return data
-        .sort((a, b) => new Date(a.created_at || a.timestamp || 0).getTime() - new Date(b.created_at || b.timestamp || 0).getTime())
+        .sort((a, b) => {
+          const timeA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.created_at || a.timestamp || 0).getTime();
+          const timeB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.created_at || b.timestamp || 0).getTime();
+          return timeA - timeB;
+        })
         .map(d => this.mapMessage(d));
     } catch (e) {
       console.error('Supabase Chat Fetch Critical:', e);
@@ -420,7 +425,7 @@ class DbService {
       text: d.text,
       audioData: d.audio_data,
       type: d.type || (d.audio_data ? 'audio' : 'text'),
-      timestamp: new Date(d.created_at || d.timestamp || Date.now()).getTime()
+      timestamp: typeof d.timestamp === 'number' ? d.timestamp : new Date(d.created_at || d.timestamp || Date.now()).getTime()
     };
   }
 
