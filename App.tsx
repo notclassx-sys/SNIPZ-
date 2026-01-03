@@ -36,15 +36,15 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!user?.id) return;
     
-    // Initial heartbeat
-    db.heartbeat(user.id);
+    // Initial heartbeat - reinforce room membership
+    db.heartbeat(user.id, user.roomId);
     
     const hbInterval = setInterval(() => {
-      db.heartbeat(user.id);
+      db.heartbeat(user.id, user.roomId);
     }, 30000); // Every 30 seconds
 
     return () => clearInterval(hbInterval);
-  }, [user?.id]);
+  }, [user?.id, user?.roomId]);
 
   const handleAuth = async () => {
     setAuthError('');

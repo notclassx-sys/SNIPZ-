@@ -16,7 +16,7 @@ class DbService {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
-        last_active: Date.now(), // BigInt compatible
+        last_active: Date.now(),
         room_id: user.roomId || null,
         role: user.role
       });
@@ -24,11 +24,15 @@ class DbService {
     if (error) console.error('Error updating user profile:', error);
   }
 
-  async heartbeat(userId: string) {
+  async heartbeat(userId: string, roomId?: string) {
+    const payload: any = { last_active: Date.now() };
+    if (roomId) payload.room_id = roomId;
+    
     const { error } = await supabase
       .from('profiles')
-      .update({ last_active: Date.now() }) // BigInt compatible
+      .update(payload)
       .eq('id', userId);
+      
     if (error) {
       console.error('Heartbeat failed:', error);
     }
@@ -80,8 +84,7 @@ class DbService {
       name: data.name,
       email: data.email,
       avatar: data.avatar,
-      // Handle both number (bigint) and string (fallback)
-      lastActive: typeof data.last_active === 'number' ? data.last_active : new Date(data.last_active || Date.now()).getTime(),
+      lastActive: typeof data.last_active === 'number' ? data.last_active : Date.now(),
       roomId: data.room_id,
       role: data.role
     };
@@ -182,14 +185,14 @@ class DbService {
       .select('*')
       .eq('room_id', roomId);
       
-    if (error) return [];
+    if (error || !data) return [];
     
     return data.map((d: any) => ({
       id: d.id,
       name: d.name,
       email: d.email,
       avatar: d.avatar,
-      lastActive: typeof d.last_active === 'number' ? d.last_active : new Date(d.last_active || Date.now()).getTime(),
+      lastActive: typeof d.last_active === 'number' ? d.last_active : Date.now(),
       roomId: d.room_id,
       role: d.role
     }));
