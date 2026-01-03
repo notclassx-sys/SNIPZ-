@@ -114,11 +114,10 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
           </div>
         </div>
         
-        {/* Unlocked Add Task button for all room members */}
         {user.roomId && (
           <button 
             onClick={() => {
-              loadData(); // Fresh members list before opening
+              loadData(); 
               setShowCreate(true);
             }}
             className="w-14 h-14 bg-green-500 rounded-[1.5rem] flex items-center justify-center hover:bg-green-600 transition-all shadow-xl shadow-green-100 btn-bounce"
@@ -176,11 +175,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-gray-50 flex items-center gap-2">
-                 <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Creator:</span>
-                 <span className="text-[10px] font-bold text-slate-500 uppercase">{task.createdByName}</span>
-              </div>
-
               {task.status === 'PENDING' && mode === 'MY' && (
                 <div className="flex gap-3 mt-6">
                   <button 
@@ -202,11 +196,11 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         )}
       </div>
 
-      {/* Modal: Create Task */}
+      {/* Modal: Create Task - FIXED SCROLLING */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
-            <div className="flex justify-between items-center mb-8">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-start sm:items-center justify-center p-4 overflow-y-auto pt-10 sm:pt-4">
+          <div className="w-full max-w-lg bg-white rounded-[2.5rem] p-6 sm:p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl relative mb-10 sm:mb-0">
+            <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Task</h3>
                 <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mt-1">Creating as: {user.name}</p>
@@ -216,7 +210,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
               </button>
             </div>
             
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Task Title</label>
                 <input 
@@ -242,7 +236,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                 </div>
                 <textarea 
                   placeholder="Add details here..."
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-24 resize-none"
+                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-20 resize-none text-sm"
                   value={newTask.description}
                   onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                   disabled={isSubmitting}
@@ -252,7 +246,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Assign To (Email)</label>
                 <select 
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none"
+                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none text-sm"
                   value={newTask.assignedToId}
                   onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
                   disabled={isSubmitting}
@@ -264,7 +258,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                     </option>
                   ))}
                 </select>
-                <p className="text-[9px] text-slate-400 mt-1 font-bold italic">* If a teammate is missing, ask them to check their invite code.</p>
               </div>
 
               <div>
@@ -278,7 +271,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                 />
               </div>
 
-              <div className="pt-6">
+              <div className="pt-4 pb-2">
                 <button 
                   onClick={handleCreateTask}
                   disabled={isSubmitting || !newTask.name || !newTask.assignedToId || !newTask.deadline}
@@ -294,8 +287,8 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
 
       {/* Modal: Push Task */}
       {showPush && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl animate-scale-in">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl animate-scale-in my-10">
             <h3 className="text-2xl font-black text-slate-900 mb-6 tracking-tight">Delegate To...</h3>
             <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar px-1">
               {members.filter(m => m.id !== user.id).map(member => (
