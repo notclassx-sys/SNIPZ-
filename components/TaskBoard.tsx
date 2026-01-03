@@ -202,27 +202,29 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         )}
       </div>
 
-      {/* Modal: Create Task - FIXED SCROLLING & ASSIGNMENT DISPLAY */}
+      {/* Modal: Create Task - REDESIGNED FOR CLEAR VISIBILITY & SCROLLING */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-start sm:items-center justify-center p-4 overflow-y-auto pt-10 sm:pt-4">
-          <div className="w-full max-w-lg bg-white rounded-[2.5rem] p-6 sm:p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl relative mb-10 sm:mb-0">
-            <div className="flex justify-between items-center mb-6">
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-[2rem] flex flex-col max-h-[85vh] shadow-2xl animate-scale-in">
+            {/* Modal Header - Fixed at top */}
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center">
               <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Task</h3>
-                <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mt-1">Creating as: {user.name}</p>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Assign Task</h3>
+                <p className="text-[9px] font-black text-green-500 uppercase tracking-widest mt-0.5">Sync with team</p>
               </div>
-              <button onClick={() => setShowCreate(false)} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-slate-400" disabled={isSubmitting}>
-                <i className="fas fa-times"></i>
+              <button onClick={() => setShowCreate(false)} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-slate-400">
+                <i className="fas fa-times text-sm"></i>
               </button>
             </div>
             
-            <div className="space-y-4">
+            {/* Modal Body - Scrollable content area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Task Title</label>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Task Title</label>
                 <input 
                   type="text" 
                   placeholder="What needs to be done?"
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
+                  className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold text-sm"
                   value={newTask.name}
                   onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
                   disabled={isSubmitting}
@@ -230,19 +232,19 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
               </div>
               
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
                   <button 
                     onClick={handleSmartSuggest}
                     disabled={aiLoading || !newTask.name || isSubmitting}
-                    className="text-[10px] bg-green-50 text-green-600 px-3 py-1 rounded-full font-black uppercase tracking-wider hover:bg-green-100 transition-all disabled:opacity-50"
+                    className="text-[9px] bg-green-50 text-green-600 px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider hover:bg-green-100 transition-all"
                   >
-                    {aiLoading ? 'Thinking...' : <><i className="fas fa-wand-magic-sparkles mr-1"></i> AI Suggestions</>}
+                    {aiLoading ? 'Thinking...' : <><i className="fas fa-wand-magic-sparkles mr-1"></i> Smart Suggest</>}
                   </button>
                 </div>
                 <textarea 
                   placeholder="Add details here..."
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-20 resize-none text-sm"
+                  className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-20 resize-none text-xs leading-relaxed"
                   value={newTask.description}
                   onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                   disabled={isSubmitting}
@@ -250,43 +252,48 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Assign To (Teammate Email)</label>
-                <select 
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none text-sm"
-                  value={newTask.assignedToId}
-                  onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
-                  disabled={isSubmitting}
-                >
-                  <option value="">Select teammate...</option>
-                  {members.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.email}) {m.id === user.id ? '[ME]' : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[9px] text-slate-400 mt-1 font-bold italic">* Ensure gamingaimer55 and saxenabhavya15 are in this list.</p>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To</label>
+                <div className="relative">
+                  <select 
+                    className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none text-xs"
+                    value={newTask.assignedToId}
+                    onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Choose team member...</option>
+                    {members.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.email})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-[10px]">
+                    <i className="fas fa-chevron-down"></i>
+                  </div>
+                </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Deadline</label>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Deadline Date</label>
                 <input 
                   type="date" 
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
+                  className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold text-xs"
                   value={newTask.deadline}
                   onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
                   disabled={isSubmitting}
                 />
               </div>
+            </div>
 
-              <div className="pt-4 pb-2">
-                <button 
-                  onClick={handleCreateTask}
-                  disabled={isSubmitting || !newTask.name || !newTask.assignedToId || !newTask.deadline}
-                  className="w-full py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black transition-all shadow-xl shadow-slate-200 btn-bounce disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Syncing with Team...' : 'Confirm Assignment'}
-                </button>
-              </div>
+            {/* Modal Footer - Action button */}
+            <div className="p-5 border-t border-gray-100">
+              <button 
+                onClick={handleCreateTask}
+                disabled={isSubmitting || !newTask.name || !newTask.assignedToId || !newTask.deadline}
+                className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black transition-all shadow-xl shadow-slate-100 btn-bounce disabled:opacity-50 text-xs tracking-widest uppercase"
+              >
+                {isSubmitting ? 'Syncing...' : 'Confirm Assignment'}
+              </button>
             </div>
           </div>
         </div>
@@ -294,30 +301,30 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
 
       {/* Modal: Push Task */}
       {showPush && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-sm bg-white rounded-[2.5rem] p-8 shadow-2xl animate-scale-in my-10">
-            <h3 className="text-2xl font-black text-slate-900 mb-6 tracking-tight">Delegate To...</h3>
-            <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar px-1">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white rounded-[2rem] p-6 shadow-2xl animate-scale-in">
+            <h3 className="text-xl font-black text-slate-900 mb-5 tracking-tight">Delegate To...</h3>
+            <div className="space-y-2.5 max-h-60 overflow-y-auto custom-scrollbar pr-1">
               {members.filter(m => m.id !== user.id).map(member => (
                 <button 
                   key={member.id}
                   onClick={() => handlePushTask(showPush, member.id)}
-                  className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-transparent hover:bg-green-50 hover:border-green-200 transition-all text-left btn-bounce"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-transparent hover:bg-green-50 hover:border-green-100 transition-all text-left btn-bounce"
                 >
-                  <img src={member.avatar} className="w-12 h-12 rounded-xl bg-white shadow-sm border border-gray-100" alt={member.name} />
+                  <img src={member.avatar} className="w-10 h-10 rounded-lg bg-white shadow-sm" alt={member.name} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-extrabold text-slate-800 text-sm leading-tight truncate">{member.name}</div>
-                    <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 truncate">{member.email}</div>
+                    <div className="font-extrabold text-slate-800 text-xs truncate">{member.name}</div>
+                    <div className="text-[8px] text-slate-400 font-black uppercase tracking-widest mt-0.5 truncate">{member.email}</div>
                   </div>
                 </button>
               ))}
               {members.filter(m => m.id !== user.id).length === 0 && (
-                <p className="text-slate-400 font-bold text-center py-6">No other team members found</p>
+                <p className="text-slate-400 text-[10px] font-bold text-center py-6">No other members active</p>
               )}
             </div>
             <button 
               onClick={() => setShowPush(null)}
-              className="w-full mt-8 py-4 bg-white border border-gray-100 text-slate-400 rounded-2xl text-sm font-bold btn-bounce"
+              className="w-full mt-6 py-3 bg-white border border-gray-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest btn-bounce"
             >
               Cancel
             </button>
