@@ -9,23 +9,32 @@ class DbService {
     this.currentUser = user;
     localStorage.setItem('snipx_user', JSON.stringify(user));
     
+    const payload: any = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      last_active: Date.now(),
+      role: user.role
+    };
+    
+    // Only update room_id if it exists to avoid clearing it
+    if (user.roomId) {
+      payload.room_id = user.roomId;
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .upsert({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        last_active: Date.now(),
-        room_id: user.roomId || null,
-        role: user.role
-      });
+      .upsert(payload);
       
-    if (error) console.error('Error updating user profile:', error);
+    if (error) console.error('Error updating user profile:', error.message);
   }
 
   async heartbeat(userId: string, roomId?: string) {
+    if (!userId) return;
+    
     const payload: any = { last_active: Date.now() };
+    // Only update room_id if we are certain about it
     if (roomId) payload.room_id = roomId;
     
     const { error } = await supabase
@@ -34,7 +43,7 @@ class DbService {
       .eq('id', userId);
       
     if (error) {
-      console.error('Heartbeat failed:', error);
+      console.error('Heartbeat update failed:', error.message);
     }
   }
 
@@ -64,7 +73,7 @@ class DbService {
       }]);
 
     if (error) {
-      console.error('Signup Error:', error);
+      console.error('Signup DB Error:', error.message);
       return null;
     }
     
@@ -100,7 +109,11 @@ class DbService {
     if (!this.currentUser) {
       const stored = localStorage.getItem('snipx_user');
       if (stored) {
-        this.currentUser = JSON.parse(stored);
+        try {
+          this.currentUser = JSON.parse(stored);
+        } catch (e) {
+          localStorage.removeItem('snipx_user');
+        }
       }
     }
     return this.currentUser;
@@ -111,7 +124,7 @@ class DbService {
       .from('rooms')
       .select('*')
       .eq('id', roomId)
-      .single();
+      .maybeSingle();
     
     if (error || !data) return null;
     
@@ -124,7 +137,7 @@ class DbService {
   }
 
   async createRoom(name: string, admin: User): Promise<Room | null> {
-    const room: any = {
+    const roomPayload = {
       name,
       admin_id: admin.id,
       invite_code: Math.random().toString(36).substr(2, 6).toUpperCase()
@@ -132,11 +145,11 @@ class DbService {
     
     const { data, error } = await supabase
       .from('rooms')
-      .insert([room])
+      .insert([roomPayload])
       .select();
       
     if (error || !data?.[0]) {
-      console.error('Error creating room:', error);
+      console.error('Error creating room record:', error?.message);
       return null;
     }
 
@@ -147,6 +160,7 @@ class DbService {
       inviteCode: data[0].invite_code
     };
 
+    // Update local user and sync to DB profile immediately
     if (this.currentUser) {
       this.currentUser.roomId = newRoom.id;
       this.currentUser.role = 'ADMIN';
@@ -161,13 +175,14 @@ class DbService {
       .from('rooms')
       .select('*')
       .eq('invite_code', inviteCode.toUpperCase())
-      .single();
+      .maybeSingle();
       
     if (error || !room) {
-      console.error('Room not found or error:', error);
+      console.error('Room lookup failed:', error?.message || 'Code not found');
       return null;
     }
 
+    // Update local user and sync to DB profile immediately
     if (this.currentUser) {
       this.currentUser.roomId = room.id;
       this.currentUser.role = 'MEMBER';
@@ -183,12 +198,16 @@ class DbService {
   }
 
   async getRoomMembers(roomId: string): Promise<User[]> {
+    if (!roomId) return [];
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('room_id', roomId);
       
-    if (error || !data) return [];
+    if (error || !data) {
+      console.error('Error fetching members:', error?.message);
+      return [];
+    }
     
     return data.map((d: any) => ({
       id: d.id,
@@ -218,7 +237,7 @@ class DbService {
       .select();
       
     if (error) {
-      console.error('Supabase Task Insert Error:', error.message, error.details);
+      console.error('Task Insertion Failed:', error.message);
       return null;
     }
     
@@ -227,7 +246,7 @@ class DbService {
     const task: Task = {
       ...taskData,
       id: data[0].id,
-      createdAt: new Date(data[0].created_at || Date.now()).getTime()
+      createdAt: Date.now()
     };
 
     await this.addLog({
@@ -246,9 +265,9 @@ class DbService {
   }
 
   async pushTask(taskId: string, newAssigneeId: string, currentUserId: string): Promise<boolean> {
-    const { data: toUser } = await supabase.from('profiles').select('*').eq('id', newAssigneeId).single();
-    const { data: fromUser } = await supabase.from('profiles').select('*').eq('id', currentUserId).single();
-    const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).single();
+    const { data: toUser } = await supabase.from('profiles').select('*').eq('id', newAssigneeId).maybeSingle();
+    const { data: fromUser } = await supabase.from('profiles').select('*').eq('id', currentUserId).maybeSingle();
+    const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).maybeSingle();
 
     if (task && fromUser && toUser) {
       const { error } = await supabase
@@ -275,20 +294,20 @@ class DbService {
   }
 
   async completeTask(taskId: string, userId: string): Promise<boolean> {
-    const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).single();
-    const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).maybeSingle();
+    const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     
     if (task && user) {
       const { error } = await supabase
         .from('tasks')
         .update({ 
           status: 'COMPLETED',
-          completed_at: new Date().toISOString() // Fallback to ISO for DB timestamp column if needed, but standardizing
+          completed_at: new Date().toISOString()
         })
         .eq('id', taskId);
         
       if (error) {
-        // Retry with numeric if ISO fails
+        // Fallback for strict BigInt columns
         await supabase.from('tasks').update({ status: 'COMPLETED', completed_at: Date.now() as any }).eq('id', taskId);
       }
 
@@ -309,6 +328,7 @@ class DbService {
   }
 
   async getTasks(roomId: string): Promise<Task[]> {
+    if (!roomId) return [];
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
@@ -343,6 +363,7 @@ class DbService {
   }
 
   async getLogs(roomId: string): Promise<TaskLog[]> {
+    if (!roomId) return [];
     const { data, error } = await supabase
       .from('task_logs')
       .select('*')
@@ -383,10 +404,10 @@ class DbService {
       timestamp: now
     };
 
-    let { data, error } = await supabase.from('messages').insert([payload]).select();
+    const { data, error } = await supabase.from('messages').insert([payload]).select();
 
     if (error) {
-      console.error('Chat Error:', error.message);
+      console.error('Chat Insert Error:', error.message);
       return null;
     }
     
@@ -396,6 +417,7 @@ class DbService {
   }
 
   async getMessages(roomId: string): Promise<Message[]> {
+    if (!roomId) return [];
     try {
       const { data, error } = await supabase
         .from('messages')

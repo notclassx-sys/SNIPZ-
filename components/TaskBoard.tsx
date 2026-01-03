@@ -16,6 +16,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
   const [showPush, setShowPush] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Create Task Form State
   const [newTask, setNewTask] = useState({
@@ -33,19 +34,23 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
 
   const loadData = async () => {
     if (!user.roomId) return;
-    const allTasks = await db.getTasks(user.roomId);
-    setTasks(mode === 'MY' ? allTasks.filter(t => t.assignedToId === user.id) : allTasks);
-    
-    let roomMembers = await db.getRoomMembers(user.roomId);
-    if (!roomMembers.find(m => m.id === user.id)) {
-      roomMembers = [user, ...roomMembers];
+    setIsRefreshing(true);
+    try {
+      const allTasks = await db.getTasks(user.roomId);
+      setTasks(mode === 'MY' ? allTasks.filter(t => t.assignedToId === user.id) : allTasks);
+      
+      const roomMembers = await db.getRoomMembers(user.roomId);
+      setMembers(roomMembers);
+    } catch (e) {
+      console.error("Data load failed", e);
+    } finally {
+      setIsRefreshing(false);
     }
-    setMembers(roomMembers);
   };
 
   const handleCreateTask = async () => {
     if (!newTask.name || !newTask.assignedToId || !newTask.deadline) {
-      alert("Please fill all required fields: Title, Assignee, and Deadline.");
+      alert("Required: Title, Assignee, and Deadline.");
       return;
     }
     
@@ -68,12 +73,12 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
       if (created) {
         setShowCreate(false);
         setNewTask({ name: '', description: '', deadline: '', assignedToId: '' });
-        loadData();
+        await loadData();
       } else {
-        alert("Task could not be saved to server. Please check your connection or room settings.");
+        alert("Failed to create task. This user might not be correctly synced to the room.");
       }
     } catch (e) {
-      alert("A system error occurred. Please try again later.");
+      alert("Error saving task. Please check console.");
     } finally {
       setIsSubmitting(false);
     }
@@ -103,11 +108,17 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
       <div className="flex justify-between items-center px-1">
         <div>
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">{mode === 'MY' ? 'My Tasks' : 'Project Board'}</h2>
-          <p className="text-slate-400 font-medium text-sm">Organized team delivery</p>
+          <div className="flex items-center gap-2">
+             <p className="text-slate-400 font-medium text-sm">Organized team delivery</p>
+             {isRefreshing && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>}
+          </div>
         </div>
         {user.role === 'ADMIN' && (
           <button 
-            onClick={() => setShowCreate(true)}
+            onClick={() => {
+              loadData(); // Fresh members list before opening
+              setShowCreate(true);
+            }}
             className="w-14 h-14 bg-green-500 rounded-[1.5rem] flex items-center justify-center hover:bg-green-600 transition-all shadow-xl shadow-green-100 btn-bounce"
           >
             <i className="fas fa-plus text-white text-xl"></i>
@@ -192,7 +203,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
       {/* Modal: Create Task */}
       {showCreate && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl">
+          <div className="w-full max-w-lg bg-white rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Task</h3>
@@ -229,38 +240,40 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                 </div>
                 <textarea 
                   placeholder="Add details here..."
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-32 resize-none"
+                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-24 resize-none"
                   value={newTask.description}
                   onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                   disabled={isSubmitting}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Assign To</label>
-                  <select 
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none"
-                    value={newTask.assignedToId}
-                    onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">Select...</option>
-                    {members.map(m => (
-                      <option key={m.id} value={m.id}>{m.id === user.id ? `Me (${m.name})` : m.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Deadline</label>
-                  <input 
-                    type="date" 
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
-                    value={newTask.deadline}
-                    onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
-                    disabled={isSubmitting}
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Assign To (Email)</label>
+                <select 
+                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none"
+                  value={newTask.assignedToId}
+                  onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select teammate...</option>
+                  {members.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.email}) {m.id === user.id ? '[ME]' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-slate-400 mt-1 font-bold italic">* If a teammate is missing, ask them to check their invite code.</p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Deadline</label>
+                <input 
+                  type="date" 
+                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
+                  value={newTask.deadline}
+                  onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                  disabled={isSubmitting}
+                />
               </div>
 
               <div className="pt-6">
@@ -269,7 +282,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   disabled={isSubmitting || !newTask.name || !newTask.assignedToId || !newTask.deadline}
                   className="w-full py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black transition-all shadow-xl shadow-slate-200 btn-bounce disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Syncing...' : 'Confirm Assignment'}
+                  {isSubmitting ? 'Finalizing Sync...' : 'Confirm Assignment'}
                 </button>
               </div>
             </div>
@@ -290,14 +303,14 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-transparent hover:bg-green-50 hover:border-green-200 transition-all text-left btn-bounce"
                 >
                   <img src={member.avatar} className="w-12 h-12 rounded-xl bg-white shadow-sm border border-gray-100" alt={member.name} />
-                  <div>
-                    <div className="font-extrabold text-slate-800 text-base leading-tight">{member.name}</div>
-                    <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{member.role}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-extrabold text-slate-800 text-sm leading-tight truncate">{member.name}</div>
+                    <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 truncate">{member.email}</div>
                   </div>
                 </button>
               ))}
               {members.filter(m => m.id !== user.id).length === 0 && (
-                <p className="text-slate-400 font-bold text-center py-6">Invite others to push tasks</p>
+                <p className="text-slate-400 font-bold text-center py-6">No other team members found</p>
               )}
             </div>
             <button 
