@@ -124,19 +124,18 @@ class DbService {
     const { data, error } = await supabase
       .from('rooms')
       .insert([room])
-      .select()
-      .single();
+      .select();
       
-    if (error) {
+    if (error || !data?.[0]) {
       console.error('Error creating room:', error);
       return null;
     }
 
     const newRoom: Room = {
-      id: data.id,
-      name: data.name,
-      adminId: data.admin_id,
-      inviteCode: data.invite_code
+      id: data[0].id,
+      name: data[0].name,
+      adminId: data[0].admin_id,
+      inviteCode: data[0].invite_code
     };
 
     if (this.currentUser) {
@@ -205,18 +204,16 @@ class DbService {
         assigned_to_name: taskData.assignedToName,
         created_by_id: taskData.createdById,
         created_by_name: taskData.createdByName,
-        status: taskData.status,
-        created_at: Date.now()
+        status: taskData.status
       }])
-      .select()
-      .single();
+      .select();
       
-    if (error) return null;
+    if (error || !data?.[0]) return null;
 
     const task: Task = {
       ...taskData,
-      id: data.id,
-      createdAt: data.created_at
+      id: data[0].id,
+      createdAt: new Date(data[0].created_at).getTime()
     };
 
     await this.addLog({
@@ -272,7 +269,7 @@ class DbService {
         .from('tasks')
         .update({ 
           status: 'COMPLETED',
-          completed_at: Date.now() // Track completion time
+          completed_at: new Date().toISOString()
         })
         .eq('id', taskId);
         
@@ -317,10 +314,9 @@ class DbService {
         createdById: d.created_by_id,
         createdByName: d.created_by_name,
         status: d.status,
-        createdAt: d.created_at,
-        completedAt: d.completed_at
+        createdAt: new Date(d.created_at).getTime(),
+        completedAt: d.completed_at ? new Date(d.completed_at).getTime() : undefined
       }))
-      // Filter out completed tasks older than 48 hours
       .filter(task => {
         if (task.status === 'COMPLETED' && task.completedAt) {
           return (now - task.completedAt) < FORTY_EIGHT_HOURS_MS;
@@ -334,11 +330,24 @@ class DbService {
       .from('task_logs')
       .select('*')
       .eq('room_id', roomId)
-      .order('timestamp', { ascending: false });
+      .order('created_at', { ascending: false });
       
-    if (error) return [];
+    if (error) {
+      // Fallback for older schemas that might use 'timestamp'
+      const { data: fallbackData } = await supabase
+        .from('task_logs')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('timestamp', { ascending: false });
+      if (fallbackData) return fallbackData.map(d => this.mapLog(d));
+      return [];
+    }
     
-    return data.map((d: any) => ({
+    return data.map((d: any) => this.mapLog(d));
+  }
+
+  private mapLog(d: any): TaskLog {
+    return {
       id: d.id,
       taskId: d.task_id,
       taskName: d.task_name,
@@ -348,8 +357,8 @@ class DbService {
       toUserId: d.to_user_id,
       toUserName: d.to_user_name,
       action: d.action,
-      timestamp: d.timestamp
-    }));
+      timestamp: new Date(d.created_at || d.timestamp || Date.now()).getTime()
+    };
   }
 
   async addMessage(roomId: string, senderId: string, senderName: string, text?: string, audioData?: string): Promise<Message | null> {
@@ -361,26 +370,27 @@ class DbService {
         sender_name: senderName,
         text: text || null,
         audio_data: audioData || null,
-        type: audioData ? 'audio' : 'text',
-        timestamp: Date.now()
+        type: audioData ? 'audio' : 'text'
       }])
-      .select()
-      .single();
+      .select();
       
     if (error) {
-      console.error('Supabase Chat Error:', error);
+      console.error('Supabase Chat Insert Error:', error.message, '| Details:', error.details, '| Hint:', error.hint);
       return null;
     }
     
+    if (!data?.[0]) return null;
+
+    const d = data[0];
     return {
-      id: data.id,
-      roomId: data.room_id,
-      senderId: data.sender_id,
-      senderName: data.sender_name,
-      text: data.text,
-      audioData: data.audio_data,
-      type: data.type,
-      timestamp: data.timestamp
+      id: d.id,
+      roomId: d.room_id,
+      senderId: d.sender_id,
+      senderName: d.sender_name,
+      text: d.text,
+      audioData: d.audio_data,
+      type: d.type,
+      timestamp: new Date(d.created_at).getTime()
     };
   }
 
@@ -389,11 +399,25 @@ class DbService {
       .from('messages')
       .select('*')
       .eq('room_id', roomId)
-      .order('timestamp', { ascending: true });
+      .order('created_at', { ascending: true });
       
-    if (error) return [];
+    if (error) {
+      console.error('Supabase Chat Fetch Error:', error.message);
+      // Fallback attempt for older schemas
+      const { data: fallback } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('timestamp', { ascending: true });
+      if (fallback) return fallback.map(d => this.mapMessage(d));
+      return [];
+    }
     
-    return data.map((d: any) => ({
+    return data.map((d: any) => this.mapMessage(d));
+  }
+
+  private mapMessage(d: any): Message {
+    return {
       id: d.id,
       roomId: d.room_id,
       senderId: d.sender_id,
@@ -401,8 +425,8 @@ class DbService {
       text: d.text,
       audioData: d.audio_data,
       type: d.type,
-      timestamp: d.timestamp
-    }));
+      timestamp: new Date(d.created_at || d.timestamp || Date.now()).getTime()
+    };
   }
 
   private async addLog(log: Omit<TaskLog, 'id'>) {
@@ -414,8 +438,7 @@ class DbService {
       from_user_name: log.fromUserName,
       to_user_id: log.toUserId,
       to_user_name: log.toUserName,
-      action: log.action,
-      timestamp: log.timestamp
+      action: log.action
     }]);
   }
 
