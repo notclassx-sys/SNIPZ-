@@ -1,0 +1,8 @@
+{
+  "name": "SNIPX LIBRARY - Team Room & Task Management",
+  "description": "A high-performance team workspace featuring room-based task management, real-time collaboration, and an admin-controlled environment with task pushing and activity tracking.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
