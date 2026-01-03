@@ -18,7 +18,7 @@ class DbService {
       role: user.role
     };
     
-    // Only update room_id if it exists to avoid clearing it
+    // Ensure room_id is synced to DB if present in local state
     if (user.roomId) {
       payload.room_id = user.roomId;
     }
@@ -34,7 +34,7 @@ class DbService {
     if (!userId) return;
     
     const payload: any = { last_active: Date.now() };
-    // Only update room_id if we are certain about it
+    // Maintain room association during heartbeat
     if (roomId) payload.room_id = roomId;
     
     const { error } = await supabase
@@ -120,6 +120,7 @@ class DbService {
   }
 
   async getRoom(roomId: string): Promise<Room | null> {
+    if (!roomId) return null;
     const { data, error } = await supabase
       .from('rooms')
       .select('*')
@@ -160,7 +161,6 @@ class DbService {
       inviteCode: data[0].invite_code
     };
 
-    // Update local user and sync to DB profile immediately
     if (this.currentUser) {
       this.currentUser.roomId = newRoom.id;
       this.currentUser.role = 'ADMIN';
@@ -182,7 +182,6 @@ class DbService {
       return null;
     }
 
-    // Update local user and sync to DB profile immediately
     if (this.currentUser) {
       this.currentUser.roomId = room.id;
       this.currentUser.role = 'MEMBER';
@@ -221,47 +220,57 @@ class DbService {
   }
 
   async createTask(taskData: Omit<Task, 'id' | 'createdAt'>): Promise<Task | null> {
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert([{
-        room_id: taskData.roomId,
-        name: taskData.name,
-        description: taskData.description,
-        deadline: taskData.deadline,
-        assigned_to_id: taskData.assignedToId,
-        assigned_to_name: taskData.assignedToName,
-        created_by_id: taskData.createdById,
-        created_by_name: taskData.createdByName,
-        status: taskData.status
-      }])
-      .select();
-      
-    if (error) {
-      console.error('Task Insertion Failed:', error.message);
+    if (!taskData.roomId) {
+      console.error('CreateTask Error: No Room ID provided');
       return null;
     }
-    
-    if (!data?.[0]) return null;
 
-    const task: Task = {
-      ...taskData,
-      id: data[0].id,
-      createdAt: Date.now()
-    };
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([{
+          room_id: taskData.roomId,
+          name: taskData.name,
+          description: taskData.description,
+          deadline: taskData.deadline,
+          assigned_to_id: taskData.assignedToId,
+          assigned_to_name: taskData.assignedToName,
+          created_by_id: taskData.createdById,
+          created_by_name: taskData.createdByName,
+          status: taskData.status
+        }])
+        .select();
+        
+      if (error) {
+        console.error('Supabase Task Insertion Error:', error.message, error.details);
+        return null;
+      }
+      
+      if (!data?.[0]) return null;
 
-    await this.addLog({
-      taskId: task.id,
-      taskName: task.name,
-      roomId: task.roomId,
-      fromUserId: task.createdById,
-      fromUserName: task.createdByName,
-      toUserId: task.assignedToId,
-      toUserName: task.assignedToName,
-      action: 'CREATED',
-      timestamp: Date.now()
-    });
+      const task: Task = {
+        ...taskData,
+        id: data[0].id,
+        createdAt: Date.now()
+      };
 
-    return task;
+      await this.addLog({
+        taskId: task.id,
+        taskName: task.name,
+        roomId: task.roomId,
+        fromUserId: task.createdById,
+        fromUserName: task.createdByName,
+        toUserId: task.assignedToId,
+        toUserName: task.assignedToName,
+        action: 'CREATED',
+        timestamp: Date.now()
+      });
+
+      return task;
+    } catch (err: any) {
+      console.error('Critical exception in createTask:', err.message);
+      return null;
+    }
   }
 
   async pushTask(taskId: string, newAssigneeId: string, currentUserId: string): Promise<boolean> {
@@ -307,7 +316,6 @@ class DbService {
         .eq('id', taskId);
         
       if (error) {
-        // Fallback for strict BigInt columns
         await supabase.from('tasks').update({ status: 'COMPLETED', completed_at: Date.now() as any }).eq('id', taskId);
       }
 

@@ -54,12 +54,17 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
       return;
     }
     
+    if (!user.roomId) {
+      alert("Session Error: No Room ID found. Try logging out and back in.");
+      return;
+    }
+    
     setIsSubmitting(true);
     const assignedUser = members.find(m => m.id === newTask.assignedToId);
     
     try {
       const created = await db.createTask({
-        roomId: user.roomId!,
+        roomId: user.roomId,
         name: newTask.name,
         description: newTask.description,
         deadline: newTask.deadline,
@@ -75,10 +80,11 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         setNewTask({ name: '', description: '', deadline: '', assignedToId: '' });
         await loadData();
       } else {
-        alert("Failed to create task. This user might not be correctly synced to the room.");
+        alert("Failed to create task. Database rejected the assignment. Please ensure the teammate has joined this room properly.");
       }
     } catch (e) {
-      alert("Error saving task. Please check console.");
+      console.error("Task creation crash:", e);
+      alert("Error saving task. Check developer console for details.");
     } finally {
       setIsSubmitting(false);
     }
@@ -196,7 +202,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         )}
       </div>
 
-      {/* Modal: Create Task - FIXED SCROLLING */}
+      {/* Modal: Create Task - FIXED SCROLLING & ASSIGNMENT DISPLAY */}
       {showCreate && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-start sm:items-center justify-center p-4 overflow-y-auto pt-10 sm:pt-4">
           <div className="w-full max-w-lg bg-white rounded-[2.5rem] p-6 sm:p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl relative mb-10 sm:mb-0">
@@ -244,7 +250,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Assign To (Email)</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Assign To (Teammate Email)</label>
                 <select 
                   className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none text-sm"
                   value={newTask.assignedToId}
@@ -258,6 +264,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                     </option>
                   ))}
                 </select>
+                <p className="text-[9px] text-slate-400 mt-1 font-bold italic">* Ensure gamingaimer55 and saxenabhavya15 are in this list.</p>
               </div>
 
               <div>
@@ -277,7 +284,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   disabled={isSubmitting || !newTask.name || !newTask.assignedToId || !newTask.deadline}
                   className="w-full py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black transition-all shadow-xl shadow-slate-200 btn-bounce disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Finalizing Sync...' : 'Confirm Assignment'}
+                  {isSubmitting ? 'Syncing with Team...' : 'Confirm Assignment'}
                 </button>
               </div>
             </div>
