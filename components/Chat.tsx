@@ -44,16 +44,16 @@ const Chat: React.FC<ChatProps> = ({ user }) => {
     const messageText = inputText.trim();
     if (!messageText || !user.roomId) return;
     
-    setInputText(''); // Optimistic UI clear
+    setInputText(''); 
     try {
-      const sent = await db.addMessage(user.roomId, user.id, user.name, messageText);
-      if (sent) {
+      const result = await db.addMessage(user.roomId, user.id, user.name, messageText);
+      if (result.data) {
         await loadMessages();
       } else {
-        console.error("Message was not sent successfully (no record returned)");
+        alert(`CHAT ERROR: ${result.error}\n\nCheck your Supabase "messages" table schema.`);
       }
-    } catch (err) {
-      console.error("Critical chat error:", err);
+    } catch (err: any) {
+      alert(`CRITICAL CHAT ERROR: ${err.message}`);
     }
   };
 
@@ -75,7 +75,10 @@ const Chat: React.FC<ChatProps> = ({ user }) => {
         reader.onloadend = async () => {
           const base64Audio = reader.result as string;
           if (user.roomId) {
-            await db.addMessage(user.roomId, user.id, user.name, undefined, base64Audio);
+            const result = await db.addMessage(user.roomId, user.id, user.name, undefined, base64Audio);
+            if (!result.data) {
+               alert(`AUDIO CHAT ERROR: ${result.error}`);
+            }
             loadMessages();
           }
         };
