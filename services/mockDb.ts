@@ -9,11 +9,8 @@ export interface DbResult<T> {
 
 const parseTimestamp = (val: any): number => {
   if (!val) return Date.now();
-  // If it's already a number (BigInt from Supabase comes as number or string)
   if (typeof val === 'number') return val;
   if (typeof val === 'string' && /^\d+$/.test(val)) return parseInt(val, 10);
-  
-  // If it's an ISO string (Timestamptz from Supabase)
   const parsed = new Date(val).getTime();
   return isNaN(parsed) ? Date.now() : parsed;
 };
@@ -174,7 +171,6 @@ class DbService {
     if (!taskData.roomId) return { data: null, error: "Missing Room ID" };
 
     try {
-      // Omit created_at to let Supabase use its default TIMESTAMPTZ now()
       const { data, error } = await supabase
         .from('tasks')
         .insert([{
@@ -191,7 +187,6 @@ class DbService {
         .select();
         
       if (error) {
-        console.error('Task Create Error:', error);
         return { data: null, error: `${error.message} (Code: ${error.code})` };
       }
       
@@ -276,7 +271,7 @@ class DbService {
     if (error || !data) return [];
     return data.map((d: any) => ({
       id: d.id, taskId: d.task_id, taskName: d.task_name, roomId: d.room_id,
-      fromUserId: d.from_user_id, from_user_name: d.from_user_name,
+      fromUserId: d.from_user_id, fromUserName: d.from_user_name,
       toUserId: d.to_user_id, toUserName: d.to_user_name, action: d.action,
       timestamp: parseTimestamp(d.timestamp || d.created_at)
     })).sort((a: any, b: any) => b.timestamp - a.timestamp);
@@ -288,18 +283,24 @@ class DbService {
       sender_id: senderId, 
       sender_name: senderName, 
       text: text || null, 
-      audio_data: audioData || null, 
-      type: audioData ? 'audio' : 'text', 
       timestamp: Date.now()
     };
+
+    // Only add these if they are actually used to prevent schema cache errors
+    if (audioData) {
+      payload.audio_data = audioData;
+      payload.type = 'audio';
+    } else {
+      payload.type = 'text';
+    }
     
     try {
       const { data, error } = await supabase.from('messages').insert([payload]).select();
       if (error) {
-        console.error('Full Message Insert Error:', error);
+        console.error('Message Sync Error:', error);
         return { data: null, error: `${error.message} (Code: ${error.code})` };
       }
-      if (!data?.[0]) return { data: null, error: "Sync failed: Database did not return the saved record." };
+      if (!data?.[0]) return { data: null, error: "Record inserted but not returned" };
       
       const msg: Message = { 
         id: data[0].id, 
@@ -313,7 +314,6 @@ class DbService {
       };
       return { data: msg };
     } catch (e: any) {
-      console.error('Exception in addMessage:', e);
       return { data: null, error: e.message };
     }
   }
