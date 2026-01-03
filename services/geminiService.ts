@@ -1,12 +1,18 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Safe initialization to prevent app-wide crash if process.env is missing
+const getAI = () => {
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 export const getSmartTaskDescription = async (taskName: string): Promise<string> => {
-  if (!process.env.API_KEY) return "";
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+  if (!apiKey) return "";
   
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Suggest a professional and detailed description for a team task named: "${taskName}". Keep it concise (max 3 sentences).`,
@@ -19,9 +25,11 @@ export const getSmartTaskDescription = async (taskName: string): Promise<string>
 };
 
 export const getTeamActivitySummary = async (logs: any[]): Promise<string> => {
-  if (!process.env.API_KEY || logs.length === 0) return "Not enough activity to summarize.";
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+  if (!apiKey || logs.length === 0) return "Not enough activity to summarize.";
   
   try {
+    const ai = getAI();
     const logSummary = logs.slice(0, 10).map(l => `${l.fromUserName} ${l.action.toLowerCase()} task "${l.taskName}" to ${l.toUserName}`).join("; ");
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',

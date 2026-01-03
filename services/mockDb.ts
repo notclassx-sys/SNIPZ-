@@ -89,6 +89,23 @@ class DbService {
     return this.currentUser;
   }
 
+  async getRoom(roomId: string): Promise<Room | null> {
+    const { data, error } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('id', roomId)
+      .single();
+    
+    if (error || !data) return null;
+    
+    return {
+      id: data.id,
+      name: data.name,
+      adminId: data.admin_id,
+      inviteCode: data.invite_code
+    };
+  }
+
   async createRoom(name: string, admin: User): Promise<Room | null> {
     const room: any = {
       name,
@@ -304,9 +321,9 @@ class DbService {
       taskName: d.task_name,
       roomId: d.room_id,
       fromUserId: d.from_user_id,
-      fromUserName: d.from_user_name,
+      from_user_name: d.from_user_name,
       toUserId: d.to_user_id,
-      toUserName: d.to_user_name,
+      to_user_name: d.to_user_name,
       action: d.action,
       timestamp: d.timestamp
     }));

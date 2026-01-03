@@ -11,14 +11,17 @@ interface ProfileProps {
 const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
   const [room, setRoom] = useState<Room | null>(null);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const data = localStorage.getItem('snipx_data');
-    if (data) {
-      const parsed = JSON.parse(data);
-      const currentRoom = parsed.rooms.find((r: any) => r.id === user.roomId);
-      setRoom(currentRoom);
-    }
+    const fetchRoom = async () => {
+      if (user.roomId) {
+        const roomData = await db.getRoom(user.roomId);
+        setRoom(roomData);
+      }
+      setLoading(false);
+    };
+    fetchRoom();
   }, [user.roomId]);
 
   const copyInviteCode = () => {
@@ -55,22 +58,26 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
         <div className="space-y-6">
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-black text-slate-300 uppercase">Room Label</span>
-            <span className="font-extrabold text-xl text-slate-800">{room?.name || 'Snipx Lab'}</span>
+            <span className="font-extrabold text-xl text-slate-800">
+              {loading ? 'Fetching...' : (room?.name || 'No Workspace joined')}
+            </span>
           </div>
-          <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-black text-slate-300 uppercase">Invite Code</span>
-              <span className="font-mono text-2xl font-black text-green-500 tracking-widest">{room?.inviteCode || 'CODE01'}</span>
+          {room && (
+            <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-black text-slate-300 uppercase">Invite Code</span>
+                <span className="font-mono text-2xl font-black text-green-500 tracking-widest">{room.inviteCode}</span>
+              </div>
+              <button 
+                onClick={copyInviteCode}
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all btn-bounce ${
+                  copied ? 'bg-green-500 text-white' : 'bg-gray-50 text-slate-400 border border-gray-100 hover:bg-gray-100'
+                }`}
+              >
+                <i className={`fas ${copied ? 'fa-check' : 'fa-copy'} text-lg`}></i>
+              </button>
             </div>
-            <button 
-              onClick={copyInviteCode}
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all btn-bounce ${
-                copied ? 'bg-green-500 text-white' : 'bg-gray-50 text-slate-400 border border-gray-100 hover:bg-gray-100'
-              }`}
-            >
-              <i className={`fas ${copied ? 'fa-check' : 'fa-copy'} text-lg`}></i>
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
