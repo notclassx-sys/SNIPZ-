@@ -162,12 +162,12 @@ class DbService {
   async createTask(taskData: Omit<Task, 'id' | 'createdAt'>): Promise<DbResult<Task>> {
     if (!taskData.roomId) return { data: null, error: "Missing Room ID" };
 
-    // FORCE SYNC before creation to ensure foreign keys match
     if (this.currentUser) {
       await this.setCurrentUser(this.currentUser);
     }
 
     try {
+      // Fix: Explicitly send created_at to satisfy NOT NULL constraints in Supabase
       const { data, error } = await supabase
         .from('tasks')
         .insert([{
@@ -179,7 +179,8 @@ class DbService {
           assigned_to_name: taskData.assignedToName,
           created_by_id: taskData.createdById,
           created_by_name: taskData.createdByName,
-          status: taskData.status
+          status: taskData.status,
+          created_at: new Date().toISOString() // EXPLICIT TIMESTAMP
         }])
         .select();
         
@@ -274,7 +275,16 @@ class DbService {
   }
 
   async addMessage(roomId: string, senderId: string, senderName: string, text?: string, audioData?: string): Promise<Message | null> {
-    const payload: any = { room_id: roomId, sender_id: senderId, sender_name: senderName, text: text || null, audio_data: audioData || null, type: audioData ? 'audio' : 'text', timestamp: Date.now() };
+    const payload: any = { 
+      room_id: roomId, 
+      sender_id: senderId, 
+      sender_name: senderName, 
+      text: text || null, 
+      audio_data: audioData || null, 
+      type: audioData ? 'audio' : 'text', 
+      timestamp: Date.now(),
+      created_at: new Date().toISOString() // ADDED SAFETY TIMESTAMP
+    };
     const { data, error } = await supabase.from('messages').insert([payload]).select();
     if (error || !data?.[0]) return null;
     return { id: data[0].id, roomId: data[0].room_id, senderId: data[0].sender_id, senderName: data[0].sender_name, text: data[0].text, audioData: data[0].audio_data, type: data[0].type, timestamp: typeof data[0].timestamp === 'number' ? data[0].timestamp : Date.now() };
@@ -294,7 +304,8 @@ class DbService {
       task_id: log.taskId, task_name: log.taskName, room_id: log.roomId,
       from_user_id: log.fromUserId, from_user_name: log.fromUserName,
       to_user_id: log.toUserId, to_user_name: log.toUserName,
-      action: log.action, timestamp: log.timestamp
+      action: log.action, timestamp: log.timestamp,
+      created_at: new Date().toISOString() // ADDED SAFETY TIMESTAMP
     }]);
   }
 
