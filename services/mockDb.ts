@@ -162,12 +162,8 @@ class DbService {
   async createTask(taskData: Omit<Task, 'id' | 'createdAt'>): Promise<DbResult<Task>> {
     if (!taskData.roomId) return { data: null, error: "Missing Room ID" };
 
-    if (this.currentUser) {
-      await this.setCurrentUser(this.currentUser);
-    }
-
     try {
-      // Fix: Explicitly send created_at to satisfy NOT NULL constraints in Supabase
+      // Fix: Use Date.now() for created_at to satisfy BIGINT requirements
       const { data, error } = await supabase
         .from('tasks')
         .insert([{
@@ -180,17 +176,14 @@ class DbService {
           created_by_id: taskData.createdById,
           created_by_name: taskData.createdByName,
           status: taskData.status,
-          created_at: new Date().toISOString() // EXPLICIT TIMESTAMP
+          created_at: Date.now() // USE NUMBER FOR BIGINT
         }])
         .select();
         
       if (error) {
-        console.error('Supabase Error:', error);
         return { data: null, error: `${error.message} (Code: ${error.code})` };
       }
       
-      if (!data?.[0]) return { data: null, error: "Insert successful but no data returned." };
-
       const task: Task = { ...taskData, id: data[0].id, createdAt: Date.now() };
       await this.addLog({
         taskId: task.id, taskName: task.name, roomId: task.roomId,
@@ -201,7 +194,7 @@ class DbService {
 
       return { data: task };
     } catch (err: any) {
-      return { data: null, error: err.message || "Unknown exception occurred" };
+      return { data: null, error: err.message };
     }
   }
 
@@ -230,7 +223,8 @@ class DbService {
     const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     
     if (task && user) {
-      await supabase.from('tasks').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', taskId);
+      // Use Date.now() for completed_at
+      await supabase.from('tasks').update({ status: 'COMPLETED', completed_at: Date.now() }).eq('id', taskId);
       await this.addLog({
         taskId: task.id, taskName: task.name, roomId: task.room_id,
         fromUserId: userId, fromUserName: user.name,
@@ -254,8 +248,8 @@ class DbService {
       id: d.id, roomId: d.room_id, name: d.name, description: d.description, deadline: d.deadline,
       assignedToId: d.assigned_to_id, assignedToName: d.assigned_to_name,
       createdById: d.created_by_id, createdByName: d.created_by_name, status: d.status,
-      createdAt: new Date(d.created_at || Date.now()).getTime(),
-      completedAt: d.completed_at ? new Date(d.completed_at).getTime() : undefined
+      createdAt: typeof d.created_at === 'number' ? d.created_at : new Date(d.created_at).getTime(),
+      completedAt: d.completed_at ? (typeof d.completed_at === 'number' ? d.completed_at : new Date(d.completed_at).getTime()) : undefined
     })).filter(task => {
       if (task.status === 'COMPLETED' && task.completedAt) return (now - task.completedAt) < FORTY_EIGHT_HOURS_MS;
       return true;
@@ -283,7 +277,7 @@ class DbService {
       audio_data: audioData || null, 
       type: audioData ? 'audio' : 'text', 
       timestamp: Date.now(),
-      created_at: new Date().toISOString() // ADDED SAFETY TIMESTAMP
+      created_at: Date.now() // USE NUMBER
     };
     const { data, error } = await supabase.from('messages').insert([payload]).select();
     if (error || !data?.[0]) return null;
@@ -305,7 +299,7 @@ class DbService {
       from_user_id: log.fromUserId, from_user_name: log.fromUserName,
       to_user_id: log.toUserId, to_user_name: log.toUserName,
       action: log.action, timestamp: log.timestamp,
-      created_at: new Date().toISOString() // ADDED SAFETY TIMESTAMP
+      created_at: Date.now() // USE NUMBER
     }]);
   }
 

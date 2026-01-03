@@ -4,6 +4,159 @@ import { User, Task, UserRole } from '../types';
 import { db } from '../services/mockDb';
 import { getSmartTaskDescription } from '../services/geminiService';
 
+// Isolated sub-component for the create task form to ensure smooth typing
+const CreateTaskModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  user: User;
+  members: User[];
+  onTaskCreated: () => void;
+}> = ({ isOpen, onClose, user, members, onTaskCreated }) => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [assignedToId, setAssignedToId] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSmartSuggest = async () => {
+    if (!name) return;
+    setAiLoading(true);
+    const suggestion = await getSmartTaskDescription(name);
+    setDescription(suggestion);
+    setAiLoading(false);
+  };
+
+  const handleConfirm = async () => {
+    if (!name || !assignedToId || !deadline) {
+      alert("Please fill in Title, Assignee, and Deadline.");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    const assignedUser = members.find(m => m.id === assignedToId);
+    
+    try {
+      const result = await db.createTask({
+        roomId: user.roomId!,
+        name,
+        description,
+        deadline,
+        assignedToId,
+        assignedToName: assignedUser?.name || 'Unknown',
+        createdById: user.id,
+        createdByName: user.name,
+        status: 'PENDING'
+      });
+
+      if (result.data) {
+        onTaskCreated();
+        onClose();
+      } else {
+        alert(`DATABASE ERROR: ${result.error}`);
+      }
+    } catch (e: any) {
+      alert(`CRITICAL ERROR: ${e.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-white rounded-[2rem] flex flex-col max-h-[90vh] shadow-2xl animate-scale-in overflow-hidden">
+        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white shrink-0">
+          <div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">Assign Task</h3>
+            <p className="text-[9px] font-black text-green-500 uppercase tracking-widest mt-0.5">Sync with team</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-slate-400">
+            <i className="fas fa-times text-sm"></i>
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Task Title</label>
+            <input 
+              type="text" 
+              placeholder="What needs to be done?"
+              className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold text-sm"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={isSubmitting}
+              autoFocus
+            />
+          </div>
+          
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
+              <button 
+                onClick={handleSmartSuggest}
+                disabled={aiLoading || !name || isSubmitting}
+                className="text-[9px] bg-green-50 text-green-600 px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider hover:bg-green-100 transition-all"
+              >
+                {aiLoading ? 'Thinking...' : <><i className="fas fa-wand-magic-sparkles mr-1"></i> Smart Suggest</>}
+              </button>
+            </div>
+            <textarea 
+              placeholder="Add details here..."
+              className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-24 resize-none text-xs leading-relaxed"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To</label>
+            <div className="relative">
+              <select 
+                className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none text-xs"
+                value={assignedToId}
+                onChange={(e) => setAssignedToId(e.target.value)}
+                disabled={isSubmitting}
+              >
+                <option value="">Choose team member...</option>
+                {members.map(m => (
+                  <option key={m.id} value={m.id}>{m.name} ({m.email})</option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-[10px]">
+                <i className="fas fa-chevron-down"></i>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Deadline Date</label>
+            <input 
+              type="date" 
+              className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold text-xs"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              disabled={isSubmitting}
+            />
+          </div>
+        </div>
+
+        <div className="p-5 border-t border-gray-100 bg-white shrink-0">
+          <button 
+            onClick={handleConfirm}
+            disabled={isSubmitting || !name || !assignedToId || !deadline}
+            className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black transition-all shadow-xl shadow-slate-100 btn-bounce disabled:opacity-50 text-xs tracking-widest uppercase"
+          >
+            {isSubmitting ? 'SYNCING...' : 'Confirm Assignment'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface TaskBoardProps {
   mode: 'ALL' | 'MY';
   user: User;
@@ -14,16 +167,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
   const [members, setMembers] = useState<User[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [showPush, setShowPush] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const [newTask, setNewTask] = useState({
-    name: '',
-    description: '',
-    deadline: '',
-    assignedToId: '',
-  });
 
   useEffect(() => {
     loadData();
@@ -44,56 +188,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
     } finally {
       setIsRefreshing(false);
     }
-  };
-
-  const handleCreateTask = async () => {
-    if (!newTask.name || !newTask.assignedToId || !newTask.deadline) {
-      alert("Missing info: Title, Assignee, and Deadline are required.");
-      return;
-    }
-    
-    if (!user.roomId) {
-      alert("Session Error: No Room ID found.");
-      return;
-    }
-    
-    setIsSubmitting(true);
-    const assignedUser = members.find(m => m.id === newTask.assignedToId);
-    
-    try {
-      const result = await db.createTask({
-        roomId: user.roomId,
-        name: newTask.name,
-        description: newTask.description,
-        deadline: newTask.deadline,
-        assignedToId: newTask.assignedToId,
-        assignedToName: assignedUser?.name || 'Unknown',
-        createdById: user.id,
-        createdByName: user.name,
-        status: 'PENDING'
-      });
-
-      if (result.data) {
-        setShowCreate(false);
-        setNewTask({ name: '', description: '', deadline: '', assignedToId: '' });
-        await loadData();
-      } else {
-        // SHOW ACTUAL DB ERROR TO THE USER
-        alert(`DATABASE ERROR: ${result.error}\n\nThis usually means a column is missing in your Supabase table or RLS is blocking the insert.`);
-      }
-    } catch (e: any) {
-      alert(`CRITICAL ERROR: ${e.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSmartSuggest = async () => {
-    if (!newTask.name) return;
-    setAiLoading(true);
-    const suggestion = await getSmartTaskDescription(newTask.name);
-    setNewTask(prev => ({ ...prev, description: suggestion }));
-    setAiLoading(false);
   };
 
   const handleCompleteTask = async (taskId: string) => {
@@ -200,99 +294,16 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         )}
       </div>
 
-      {showCreate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-[2rem] flex flex-col max-h-[90vh] shadow-2xl animate-scale-in">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Assign Task</h3>
-                <p className="text-[9px] font-black text-green-500 uppercase tracking-widest mt-0.5">Sync with team</p>
-              </div>
-              <button onClick={() => setShowCreate(false)} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-slate-400">
-                <i className="fas fa-times text-sm"></i>
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Task Title</label>
-                <input 
-                  type="text" 
-                  placeholder="What needs to be done?"
-                  className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold text-sm"
-                  value={newTask.name}
-                  onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-                  disabled={isSubmitting}
-                />
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
-                  <button 
-                    onClick={handleSmartSuggest}
-                    disabled={aiLoading || !newTask.name || isSubmitting}
-                    className="text-[9px] bg-green-50 text-green-600 px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider hover:bg-green-100 transition-all"
-                  >
-                    {aiLoading ? 'Thinking...' : <><i className="fas fa-wand-magic-sparkles mr-1"></i> Smart Suggest</>}
-                  </button>
-                </div>
-                <textarea 
-                  placeholder="Add details here..."
-                  className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-20 resize-none text-xs leading-relaxed"
-                  value={newTask.description}
-                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To</label>
-                <div className="relative">
-                  <select 
-                    className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none text-xs"
-                    value={newTask.assignedToId}
-                    onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">Choose team member...</option>
-                    {members.map(m => (
-                      <option key={m.id} value={m.id}>{m.name} ({m.email})</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-[10px]">
-                    <i className="fas fa-chevron-down"></i>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Deadline Date</label>
-                <input 
-                  type="date" 
-                  className="w-full bg-gray-50 border border-transparent rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold text-xs"
-                  value={newTask.deadline}
-                  onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-
-            <div className="p-5 border-t border-gray-100">
-              <button 
-                onClick={handleCreateTask}
-                disabled={isSubmitting || !newTask.name || !newTask.assignedToId || !newTask.deadline}
-                className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black transition-all shadow-xl shadow-slate-100 btn-bounce disabled:opacity-50 text-xs tracking-widest uppercase"
-              >
-                {isSubmitting ? 'Syncing...' : 'Confirm Assignment'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateTaskModal 
+        isOpen={showCreate} 
+        onClose={() => setShowCreate(false)} 
+        user={user} 
+        members={members} 
+        onTaskCreated={loadData} 
+      />
 
       {showPush && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-white rounded-[2rem] p-6 shadow-2xl animate-scale-in">
             <h3 className="text-xl font-black text-slate-900 mb-5 tracking-tight">Delegate To...</h3>
             <div className="space-y-2.5 max-h-60 overflow-y-auto custom-scrollbar pr-1">
