@@ -16,7 +16,7 @@ class DbService {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
-        last_active: Date.now(),
+        last_active: new Date().toISOString(),
         room_id: user.roomId || null,
         role: user.role
       });
@@ -27,7 +27,7 @@ class DbService {
   async heartbeat(userId: string) {
     const { error } = await supabase
       .from('profiles')
-      .update({ last_active: Date.now() })
+      .update({ last_active: new Date().toISOString() })
       .eq('id', userId);
     if (error) console.error('Heartbeat failed:', error);
   }
@@ -52,7 +52,7 @@ class DbService {
         name: newUser.name,
         email: newUser.email,
         avatar: newUser.avatar,
-        last_active: Date.now(),
+        last_active: new Date().toISOString(),
         role: newUser.role,
         password: password
       }]);
@@ -78,7 +78,7 @@ class DbService {
       name: data.name,
       email: data.email,
       avatar: data.avatar,
-      lastActive: data.last_active,
+      lastActive: new Date(data.last_active || Date.now()).getTime(),
       roomId: data.room_id,
       role: data.role
     };
@@ -141,6 +141,7 @@ class DbService {
     if (this.currentUser) {
       this.currentUser.roomId = newRoom.id;
       this.currentUser.role = 'ADMIN';
+      // Force update of the profile record in Supabase to link room_id
       await this.setCurrentUser(this.currentUser);
     }
     
@@ -162,6 +163,7 @@ class DbService {
     if (this.currentUser) {
       this.currentUser.roomId = room.id;
       this.currentUser.role = 'MEMBER';
+      // Force update of the profile record in Supabase to link room_id
       await this.setCurrentUser(this.currentUser);
     }
     
@@ -186,7 +188,7 @@ class DbService {
       name: d.name,
       email: d.email,
       avatar: d.avatar,
-      lastActive: d.last_active,
+      lastActive: new Date(d.last_active || Date.now()).getTime(),
       roomId: d.room_id,
       role: d.role
     }));
@@ -356,7 +358,6 @@ class DbService {
   async addMessage(roomId: string, senderId: string, senderName: string, text?: string, audioData?: string): Promise<Message | null> {
     const now = Date.now();
     
-    // Attempt 1: Full payload including the mandatory 'timestamp' and optional 'audio_data'
     const payload: any = {
       room_id: roomId,
       sender_id: senderId,
@@ -364,20 +365,18 @@ class DbService {
       text: text || null,
       audio_data: audioData || null,
       type: audioData ? 'audio' : 'text',
-      timestamp: now // Explicitly include this as it's a NOT NULL constraint
+      timestamp: now
     };
 
     let { data, error } = await supabase.from('messages').insert([payload]).select();
 
-    // Fallback if schema doesn't have audio_data/type columns
     if (error && (error.message.includes('audio_data') || error.message.includes('type'))) {
-      console.warn('DB Schema missing audio columns, falling back to basic text insert.');
       const minimalPayload = {
         room_id: roomId,
         sender_id: senderId,
         sender_name: senderName,
         text: text || "[Audio Message]",
-        timestamp: now // Still need this!
+        timestamp: now
       };
       const retry = await supabase.from('messages').insert([minimalPayload]).select();
       data = retry.data;
@@ -435,7 +434,7 @@ class DbService {
       to_user_id: log.toUserId,
       to_user_name: log.toUserName,
       action: log.action,
-      timestamp: log.timestamp // Keep consistent
+      timestamp: log.timestamp
     }]);
   }
 
