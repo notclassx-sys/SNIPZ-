@@ -113,7 +113,9 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
              {isRefreshing && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>}
           </div>
         </div>
-        {user.role === 'ADMIN' && (
+        
+        {/* Unlocked Add Task button for all room members */}
+        {user.roomId && (
           <button 
             onClick={() => {
               loadData(); // Fresh members list before opening
