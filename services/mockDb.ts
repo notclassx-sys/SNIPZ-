@@ -326,27 +326,16 @@ class DbService {
   }
 
   async getLogs(roomId: string): Promise<TaskLog[]> {
-    try {
-      const { data, error } = await supabase
-        .from('task_logs')
-        .select('*')
-        .eq('room_id', roomId)
-        .order('created_at', { ascending: false });
-        
-      if (error) throw error;
-      return data.map((d: any) => this.mapLog(d));
-    } catch (e) {
-      // Fallback sorting
-      const { data: fallbackData } = await supabase
-        .from('task_logs')
-        .select('*')
-        .eq('room_id', roomId);
+    const { data, error } = await supabase
+      .from('task_logs')
+      .select('*')
+      .eq('room_id', roomId);
       
-      if (!fallbackData) return [];
-      return fallbackData
-        .sort((a, b) => new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime())
-        .map(d => this.mapLog(d));
-    }
+    if (error || !data) return [];
+    
+    return data
+      .map((d: any) => this.mapLog(d))
+      .sort((a, b) => b.timestamp - a.timestamp);
   }
 
   private mapLog(d: any): TaskLog {
@@ -365,26 +354,30 @@ class DbService {
   }
 
   async addMessage(roomId: string, senderId: string, senderName: string, text?: string, audioData?: string): Promise<Message | null> {
-    // Attempt 1: Full payload (audio & type support)
+    const now = Date.now();
+    
+    // Attempt 1: Full payload including the mandatory 'timestamp' and optional 'audio_data'
     const payload: any = {
       room_id: roomId,
       sender_id: senderId,
       sender_name: senderName,
       text: text || null,
       audio_data: audioData || null,
-      type: audioData ? 'audio' : 'text'
+      type: audioData ? 'audio' : 'text',
+      timestamp: now // Explicitly include this as it's a NOT NULL constraint
     };
 
     let { data, error } = await supabase.from('messages').insert([payload]).select();
 
-    // Fallback if schema doesn't have audio_data/type columns (Error 400 / PGRST204)
+    // Fallback if schema doesn't have audio_data/type columns
     if (error && (error.message.includes('audio_data') || error.message.includes('type'))) {
       console.warn('DB Schema missing audio columns, falling back to basic text insert.');
       const minimalPayload = {
         room_id: roomId,
         sender_id: senderId,
         sender_name: senderName,
-        text: text || "[Audio Message - Not supported by DB schema]"
+        text: text || "[Audio Message]",
+        timestamp: now // Still need this!
       };
       const retry = await supabase.from('messages').insert([minimalPayload]).select();
       data = retry.data;
@@ -441,7 +434,8 @@ class DbService {
       from_user_name: log.fromUserName,
       to_user_id: log.toUserId,
       to_user_name: log.toUserName,
-      action: log.action
+      action: log.action,
+      timestamp: log.timestamp // Keep consistent
     }]);
   }
 
