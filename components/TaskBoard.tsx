@@ -15,6 +15,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
   const [showCreate, setShowCreate] = useState(false);
   const [showPush, setShowPush] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Create Task Form State
   const [newTask, setNewTask] = useState({
@@ -36,7 +37,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
     setTasks(mode === 'MY' ? allTasks.filter(t => t.assignedToId === user.id) : allTasks);
     
     let roomMembers = await db.getRoomMembers(user.roomId);
-    // Ensure the current user is always available for assignment even if fetch is pending
     if (!roomMembers.find(m => m.id === user.id)) {
       roomMembers = [user, ...roomMembers];
     }
@@ -44,22 +44,39 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
   };
 
   const handleCreateTask = async () => {
-    if (!newTask.name || !newTask.assignedToId || !newTask.deadline) return;
+    if (!newTask.name || !newTask.assignedToId || !newTask.deadline) {
+      alert("Please fill all required fields: Title, Assignee, and Deadline.");
+      return;
+    }
+    
+    setIsSubmitting(true);
     const assignedUser = members.find(m => m.id === newTask.assignedToId);
-    await db.createTask({
-      roomId: user.roomId!,
-      name: newTask.name,
-      description: newTask.description,
-      deadline: newTask.deadline,
-      assignedToId: newTask.assignedToId,
-      assignedToName: assignedUser?.name || 'Unknown',
-      createdById: user.id,
-      createdByName: user.name,
-      status: 'PENDING'
-    });
-    setShowCreate(false);
-    setNewTask({ name: '', description: '', deadline: '', assignedToId: '' });
-    loadData();
+    
+    try {
+      const created = await db.createTask({
+        roomId: user.roomId!,
+        name: newTask.name,
+        description: newTask.description,
+        deadline: newTask.deadline,
+        assignedToId: newTask.assignedToId,
+        assignedToName: assignedUser?.name || 'Unknown',
+        createdById: user.id,
+        createdByName: user.name,
+        status: 'PENDING'
+      });
+
+      if (created) {
+        setShowCreate(false);
+        setNewTask({ name: '', description: '', deadline: '', assignedToId: '' });
+        loadData();
+      } else {
+        alert("Task could not be saved to server. Please check your connection or room settings.");
+      }
+    } catch (e) {
+      alert("A system error occurred. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSmartSuggest = async () => {
@@ -129,7 +146,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
 
               <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-50">
                 <div className="flex items-center gap-2.5">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${task.assignedToName}`} className="w-6 h-6 rounded-lg bg-gray-100" />
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${task.assignedToName}`} className="w-6 h-6 rounded-lg bg-gray-100" alt="" />
                   <div className="flex flex-col">
                     <span className="text-[8px] font-black text-slate-400 uppercase">Assignee</span>
                     <span className="text-xs font-bold text-slate-800">{task.assignedToName}</span>
@@ -181,7 +198,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Task</h3>
                 <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mt-1">Creating as: {user.name}</p>
               </div>
-              <button onClick={() => setShowCreate(false)} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-slate-400">
+              <button onClick={() => setShowCreate(false)} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-slate-400" disabled={isSubmitting}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -195,6 +212,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
                   value={newTask.name}
                   onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+                  disabled={isSubmitting}
                 />
               </div>
               
@@ -203,7 +221,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
                   <button 
                     onClick={handleSmartSuggest}
-                    disabled={aiLoading || !newTask.name}
+                    disabled={aiLoading || !newTask.name || isSubmitting}
                     className="text-[10px] bg-green-50 text-green-600 px-3 py-1 rounded-full font-black uppercase tracking-wider hover:bg-green-100 transition-all disabled:opacity-50"
                   >
                     {aiLoading ? 'Thinking...' : <><i className="fas fa-wand-magic-sparkles mr-1"></i> AI Suggestions</>}
@@ -214,6 +232,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium h-32 resize-none"
                   value={newTask.description}
                   onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -224,6 +243,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold appearance-none"
                     value={newTask.assignedToId}
                     onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
+                    disabled={isSubmitting}
                   >
                     <option value="">Select...</option>
                     {members.map(m => (
@@ -238,6 +258,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
                     value={newTask.deadline}
                     onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -245,9 +266,10 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
               <div className="pt-6">
                 <button 
                   onClick={handleCreateTask}
-                  className="w-full py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black transition-all shadow-xl shadow-slate-200 btn-bounce"
+                  disabled={isSubmitting || !newTask.name || !newTask.assignedToId || !newTask.deadline}
+                  className="w-full py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black transition-all shadow-xl shadow-slate-200 btn-bounce disabled:opacity-50"
                 >
-                  Confirm Assignment
+                  {isSubmitting ? 'Syncing...' : 'Confirm Assignment'}
                 </button>
               </div>
             </div>

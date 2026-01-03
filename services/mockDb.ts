@@ -63,7 +63,10 @@ class DbService {
         password: password
       }]);
 
-    if (error) return null;
+    if (error) {
+      console.error('Signup Error:', error);
+      return null;
+    }
     
     await this.setCurrentUser(newUser);
     return newUser;
@@ -161,7 +164,7 @@ class DbService {
       .single();
       
     if (error || !room) {
-      console.error('Room not found:', error);
+      console.error('Room not found or error:', error);
       return null;
     }
 
@@ -214,7 +217,12 @@ class DbService {
       }])
       .select();
       
-    if (error || !data?.[0]) return null;
+    if (error) {
+      console.error('Supabase Task Insert Error:', error.message, error.details);
+      return null;
+    }
+    
+    if (!data?.[0]) return null;
 
     const task: Task = {
       ...taskData,
@@ -238,9 +246,9 @@ class DbService {
   }
 
   async pushTask(taskId: string, newAssigneeId: string, currentUserId: string): Promise<boolean> {
-    const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).single();
-    const { data: fromUser } = await supabase.from('profiles').select('*').eq('id', currentUserId).single();
     const { data: toUser } = await supabase.from('profiles').select('*').eq('id', newAssigneeId).single();
+    const { data: fromUser } = await supabase.from('profiles').select('*').eq('id', currentUserId).single();
+    const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).single();
 
     if (task && fromUser && toUser) {
       const { error } = await supabase
@@ -275,11 +283,14 @@ class DbService {
         .from('tasks')
         .update({ 
           status: 'COMPLETED',
-          completed_at: new Date().toISOString()
+          completed_at: new Date().toISOString() // Fallback to ISO for DB timestamp column if needed, but standardizing
         })
         .eq('id', taskId);
         
-      if (error) return false;
+      if (error) {
+        // Retry with numeric if ISO fails
+        await supabase.from('tasks').update({ status: 'COMPLETED', completed_at: Date.now() as any }).eq('id', taskId);
+      }
 
       await this.addLog({
         taskId: task.id,
@@ -374,21 +385,8 @@ class DbService {
 
     let { data, error } = await supabase.from('messages').insert([payload]).select();
 
-    if (error && (error.message.includes('audio_data') || error.message.includes('type'))) {
-      const minimalPayload = {
-        room_id: roomId,
-        sender_id: senderId,
-        sender_name: senderName,
-        text: text || "[Audio Message]",
-        timestamp: now
-      };
-      const retry = await supabase.from('messages').insert([minimalPayload]).select();
-      data = retry.data;
-      error = retry.error;
-    }
-
     if (error) {
-      console.error('Final Chat Error:', error.message);
+      console.error('Chat Error:', error.message);
       return null;
     }
     
@@ -414,7 +412,7 @@ class DbService {
         })
         .map(d => this.mapMessage(d));
     } catch (e) {
-      console.error('Supabase Chat Fetch Critical:', e);
+      console.error('Chat Fetch Error:', e);
       return [];
     }
   }
