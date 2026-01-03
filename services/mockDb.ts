@@ -9,7 +9,7 @@ class DbService {
     this.currentUser = user;
     localStorage.setItem('snipx_user', JSON.stringify(user));
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('profiles')
       .upsert({
         id: user.id,
@@ -155,6 +155,7 @@ class DbService {
     if (this.currentUser) {
       this.currentUser.roomId = room.id;
       this.currentUser.role = 'MEMBER';
+      // Crucial: Wait for the profile update in the database so getRoomMembers sees the user immediately
       await this.setCurrentUser(this.currentUser);
     }
     
@@ -321,9 +322,9 @@ class DbService {
       taskName: d.task_name,
       roomId: d.room_id,
       fromUserId: d.from_user_id,
-      from_user_name: d.from_user_name,
+      fromUserName: d.from_user_name, // Fixed mapping
       toUserId: d.to_user_id,
-      to_user_name: d.to_user_name,
+      toUserName: d.to_user_name, // Fixed mapping
       action: d.action,
       timestamp: d.timestamp
     }));

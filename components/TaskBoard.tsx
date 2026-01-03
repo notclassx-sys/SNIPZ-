@@ -34,7 +34,12 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
     if (!user.roomId) return;
     const allTasks = await db.getTasks(user.roomId);
     setTasks(mode === 'MY' ? allTasks.filter(t => t.assignedToId === user.id) : allTasks);
-    const roomMembers = await db.getRoomMembers(user.roomId);
+    
+    let roomMembers = await db.getRoomMembers(user.roomId);
+    // Ensure the current user is always available for assignment even if fetch is pending
+    if (!roomMembers.find(m => m.id === user.id)) {
+      roomMembers = [user, ...roomMembers];
+    }
     setMembers(roomMembers);
   };
 
@@ -141,6 +146,11 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                 </div>
               </div>
 
+              <div className="mt-4 pt-3 border-t border-gray-50 flex items-center gap-2">
+                 <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Creator:</span>
+                 <span className="text-[10px] font-bold text-slate-500 uppercase">{task.createdByName}</span>
+              </div>
+
               {task.status === 'PENDING' && mode === 'MY' && (
                 <div className="flex gap-3 mt-6">
                   <button 
@@ -167,7 +177,10 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
           <div className="w-full max-w-lg bg-white rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl">
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Task</h3>
+              <div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Task</h3>
+                <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mt-1">Creating as: {user.name}</p>
+              </div>
               <button onClick={() => setShowCreate(false)} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-slate-400">
                 <i className="fas fa-times"></i>
               </button>
@@ -214,7 +227,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   >
                     <option value="">Select...</option>
                     {members.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
+                      <option key={m.id} value={m.id}>{m.id === user.id ? `Me (${m.name})` : m.name}</option>
                     ))}
                   </select>
                 </div>
@@ -261,7 +274,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ mode, user }) => {
                   </div>
                 </button>
               ))}
-              {members.length <= 1 && (
+              {members.filter(m => m.id !== user.id).length === 0 && (
                 <p className="text-slate-400 font-bold text-center py-6">Invite others to push tasks</p>
               )}
             </div>

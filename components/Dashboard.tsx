@@ -29,8 +29,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     if (!user.roomId) return;
     const allTasks = await db.getTasks(user.roomId);
     const roomLogs = await db.getLogs(user.roomId);
-    const roomMembers = await db.getRoomMembers(user.roomId);
+    let roomMembers = await db.getRoomMembers(user.roomId);
     
+    // Ensure the current user is counted even if the database response is being updated
+    if (roomMembers.length === 0) {
+      roomMembers = [user];
+    }
+
     setStats({
       total: allTasks.length,
       completed: allTasks.filter(t => t.status === 'COMPLETED').length,
@@ -99,7 +104,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 }`}></div>
                 <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-50">
                   <div className="text-sm leading-relaxed">
-                    <span className="font-bold text-slate-800">{log.fromUserName}</span>
+                    <span className="font-bold text-slate-800">{log.fromUserName || 'System'}</span>
                     <span className="text-slate-400 mx-1.5 lowercase font-medium">
                       {log.action === 'PUSHED' ? 'pushed' : log.action === 'COMPLETED' ? 'finished' : 'created'}
                     </span>
