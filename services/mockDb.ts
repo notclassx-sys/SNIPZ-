@@ -10,7 +10,9 @@ export interface DbResult<T> {
 const parseTimestamp = (val: any): number => {
   if (!val) return Date.now();
   if (typeof val === 'number') return val;
+  // Handle numeric strings
   if (typeof val === 'string' && /^\d+$/.test(val)) return parseInt(val, 10);
+  // Handle ISO strings (Supabase default)
   const parsed = new Date(val).getTime();
   return isNaN(parsed) ? Date.now() : parsed;
 };
@@ -27,7 +29,7 @@ class DbService {
       name: user.name,
       email: user.email,
       avatar: user.avatar,
-      last_active: Date.now(),
+      last_active: new Date().toISOString(),
       role: user.role
     };
     
@@ -44,7 +46,7 @@ class DbService {
 
   async heartbeat(userId: string, roomId?: string) {
     if (!userId) return;
-    const payload: any = { last_active: Date.now() };
+    const payload: any = { last_active: new Date().toISOString() };
     if (roomId) payload.room_id = roomId;
     
     const { error } = await supabase
@@ -75,7 +77,7 @@ class DbService {
         name: newUser.name,
         email: newUser.email,
         avatar: newUser.avatar,
-        last_active: Date.now(),
+        last_active: new Date().toISOString(),
         role: newUser.role,
         password: password
       }]);
@@ -229,10 +231,16 @@ class DbService {
     const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     
     if (task && user) {
-      await supabase.from('tasks').update({ 
+      const now = new Date().toISOString();
+      const { error: patchError } = await supabase.from('tasks').update({ 
         status: 'COMPLETED', 
-        completed_at: Date.now() 
+        completed_at: now 
       }).eq('id', taskId);
+
+      if (patchError) {
+        console.error('Patch Error:', patchError.message);
+        return false;
+      }
 
       await this.addLog({
         taskId: task.id, taskName: task.name, roomId: task.room_id,
@@ -283,10 +291,9 @@ class DbService {
       sender_id: senderId, 
       sender_name: senderName, 
       text: text || null, 
-      timestamp: Date.now()
+      timestamp: new Date().toISOString()
     };
 
-    // Only add these if they are actually used to prevent schema cache errors
     if (audioData) {
       payload.audio_data = audioData;
       payload.type = 'audio';
@@ -332,7 +339,7 @@ class DbService {
       task_id: log.taskId, task_name: log.taskName, room_id: log.roomId,
       from_user_id: log.fromUserId, from_user_name: log.fromUserName,
       to_user_id: log.toUserId, to_user_name: log.toUserName,
-      action: log.action, timestamp: log.timestamp
+      action: log.action, timestamp: new Date().toISOString()
     }]);
   }
 
