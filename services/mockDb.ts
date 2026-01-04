@@ -12,7 +12,7 @@ const parseTimestamp = (val: any): number => {
   if (typeof val === 'number') return val;
   // Handle numeric strings
   if (typeof val === 'string' && /^\d+$/.test(val)) return parseInt(val, 10);
-  // Handle ISO strings (Supabase default)
+  // Handle ISO strings
   const parsed = new Date(val).getTime();
   return isNaN(parsed) ? Date.now() : parsed;
 };
@@ -29,7 +29,7 @@ class DbService {
       name: user.name,
       email: user.email,
       avatar: user.avatar,
-      last_active: new Date().toISOString(),
+      last_active: Date.now(), // Back to numeric for BigInt
       role: user.role
     };
     
@@ -46,7 +46,7 @@ class DbService {
 
   async heartbeat(userId: string, roomId?: string) {
     if (!userId) return;
-    const payload: any = { last_active: new Date().toISOString() };
+    const payload: any = { last_active: Date.now() }; // Back to numeric for BigInt
     if (roomId) payload.room_id = roomId;
     
     const { error } = await supabase
@@ -77,7 +77,7 @@ class DbService {
         name: newUser.name,
         email: newUser.email,
         avatar: newUser.avatar,
-        last_active: new Date().toISOString(),
+        last_active: Date.now(), // Back to numeric for BigInt
         role: newUser.role,
         password: password
       }]);
@@ -184,7 +184,8 @@ class DbService {
           assigned_to_name: taskData.assignedToName,
           created_by_id: taskData.createdById,
           created_by_name: taskData.createdByName,
-          status: taskData.status
+          status: taskData.status,
+          created_at: Date.now() // Use numeric
         }])
         .select();
         
@@ -192,7 +193,7 @@ class DbService {
         return { data: null, error: `${error.message} (Code: ${error.code})` };
       }
       
-      const task: Task = { ...taskData, id: data[0].id, createdAt: Date.now() };
+      const task: Task = { ...taskData, id: data[0].id, createdAt: parseTimestamp(data[0].created_at) };
       await this.addLog({
         taskId: task.id, taskName: task.name, roomId: task.roomId,
         fromUserId: task.createdById, fromUserName: task.createdByName,
@@ -231,10 +232,9 @@ class DbService {
     const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     
     if (task && user) {
-      const now = new Date().toISOString();
+      // FIX: Removed 'completed_at' because column doesn't exist in schema
       const { error: patchError } = await supabase.from('tasks').update({ 
-        status: 'COMPLETED', 
-        completed_at: now 
+        status: 'COMPLETED'
       }).eq('id', taskId);
 
       if (patchError) {
@@ -291,7 +291,7 @@ class DbService {
       sender_id: senderId, 
       sender_name: senderName, 
       text: text || null, 
-      timestamp: new Date().toISOString()
+      timestamp: Date.now() // Use numeric
     };
 
     if (audioData) {
@@ -339,7 +339,7 @@ class DbService {
       task_id: log.taskId, task_name: log.taskName, room_id: log.roomId,
       from_user_id: log.fromUserId, from_user_name: log.fromUserName,
       to_user_id: log.toUserId, to_user_name: log.toUserName,
-      action: log.action, timestamp: new Date().toISOString()
+      action: log.action, timestamp: Date.now() // Use numeric
     }]);
   }
 
