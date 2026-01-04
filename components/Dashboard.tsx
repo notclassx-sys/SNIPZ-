@@ -55,22 +55,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     <div className="space-y-8 animate-m3">
       <div className="px-1">
         <h2 className="text-4xl font-extrabold text-slate-900 tracking-tighter">Ops Center</h2>
-        <p className="text-slate-500 font-bold text-sm mt-1">Workspace intelligence & performance</p>
+        <p className="text-slate-500 font-bold text-sm mt-1">Workspace performance metrics</p>
       </div>
 
-      <div className="stat-grid">
+      {/* FIXED 2x2 GRID */}
+      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         {[
           { label: 'Total', value: stats.total, color: 'emerald', icon: 'fa-cubes' },
           { label: 'Done', value: stats.completed, color: 'blue', icon: 'fa-check-circle' },
           { label: 'Wait', value: stats.pending, color: 'amber', icon: 'fa-clock' },
           { label: 'Nodes', value: stats.activeMembers, color: 'indigo', icon: 'fa-user-group' },
         ].map((stat, i) => (
-          <div key={i} className="m3-card p-6 flex flex-col items-start gap-1">
-            <div className={`w-8 h-8 rounded-xl bg-${stat.color}-50 flex items-center justify-center text-${stat.color}-500 text-xs mb-2`}>
+          <div key={i} className="m3-card p-5 flex flex-col items-center text-center">
+            <div className={`w-10 h-10 rounded-2xl bg-${stat.color}-50 flex items-center justify-center text-${stat.color}-500 text-sm mb-3 shadow-sm`}>
               <i className={`fas ${stat.icon}`}></i>
             </div>
-            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{stat.label}</span>
-            <div className="text-3xl font-black text-slate-900 tracking-tighter">{stat.value}</div>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</span>
+            <div className="text-4xl font-black text-slate-900 tracking-tighter">{stat.value}</div>
           </div>
         ))}
       </div>
@@ -92,8 +93,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           <i className="fa-solid fa-bolt text-emerald-500 text-sm"></i> Movement
         </h3>
         <div className="space-y-4">
-          {logs.slice(0, 10).map((log, i) => (
-            <div key={log.id} className="m3-card p-5 flex items-center gap-4 animate-m3">
+          {logs.slice(0, 10).map((log) => (
+            <div key={log.id} className="m3-card p-5 flex items-center gap-4">
               <div className={`w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center text-sm ${
                 log.action === 'PUSHED' ? 'bg-amber-50 text-amber-500' : 'bg-emerald-50 text-emerald-500'
               }`}>
