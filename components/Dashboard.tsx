@@ -56,7 +56,7 @@ const Dashboard: React.FC<{ user: User }> = ({ user }) => {
           { label: 'Total', value: stats.total, color: '#10b981', icon: 'fa-cubes' },
           { label: 'Done', value: stats.completed, color: '#3b82f6', icon: 'fa-check' },
           { label: 'Wait', value: stats.pending, color: '#f59e0b', icon: 'fa-clock' },
-          { label: 'Tasks', value: stats.activeMembers, color: '#6366f1', icon: 'fa-users' },
+          { label: 'Team', value: stats.activeMembers, color: '#6366f1', icon: 'fa-users' },
         ].map((stat, i) => (
           <div key={i} className="m3-card" style={{ textAlign: 'center', background: 'white', borderRadius: '24px', padding: '16px', border: '1px solid rgba(0,0,0,0.05)' }}>
             <div style={{ 
