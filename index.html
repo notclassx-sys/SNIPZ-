@@ -19,67 +19,65 @@
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
     
+    /* Global Reset & Base Layout (Native CSS Fallbacks) */
+    * { box-sizing: border-box; }
     body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: var(--m3-surface);
-      color: #0f172a;
-      overflow-x: hidden;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 0;
       -webkit-tap-highlight-color: transparent;
-      scroll-behavior: smooth;
+      overflow-x: hidden;
     }
 
-    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    /* Fixed sizes to prevent "Large Image" bug if Tailwind fails */
+    img { max-width: 100%; height: auto; object-fit: cover; }
+    .avatar-sm { width: 40px !important; height: 40px !important; border-radius: 12px; }
+    .avatar-md { width: 56px !important; height: 56px !important; border-radius: 18px; }
+    .avatar-lg { width: 128px !important; height: 128px !important; border-radius: 48px; }
 
-    .glass-effect {
-      background: rgba(255, 255, 255, 0.7);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    /* Android 15 Fluid Motion */
-    @keyframes m3-spring-up {
-      0% { opacity: 0; transform: translateY(30px) scale(0.98); }
-      100% { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    
-    @keyframes m3-ripple {
-      0% { transform: scale(0); opacity: 0.5; }
-      100% { transform: scale(4); opacity: 0; }
-    }
-
-    .animate-m3-up {
-      animation: m3-spring-up 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-
-    .touch-target {
-      min-height: 48px;
-      min-width: 48px;
-    }
-
+    /* Android 15 Edge-to-Edge Immersion Fixes */
     .edge-to-edge-header {
-      padding-top: calc(0.75rem + var(--safe-top));
+      padding-top: calc(1rem + var(--safe-top)) !important;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 50;
     }
 
     .edge-to-edge-nav {
-      padding-bottom: calc(0.5rem + var(--safe-bottom));
-      height: calc(5rem + var(--safe-bottom));
+      padding-bottom: calc(0.75rem + var(--safe-bottom)) !important;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(20px);
     }
 
     .m3-card {
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: white;
+      border-radius: 2.2rem;
+      border: 1px solid rgba(0,0,0,0.05);
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
-    .m3-card:active {
-      transform: scale(0.97);
-      filter: brightness(0.95);
+    .m3-card:active { transform: scale(0.96); }
+
+    /* Ensure grids don't collapse on mobile */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
+
+    @keyframes m3-fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-m3 { animation: m3-fade-up 0.5s ease-out forwards; }
   </style>
   <script>
     window.process = { env: { API_KEY: '' } };
-    
-    // Android Haptic Engine Simulation
     window.haptic = (type = 'light') => {
       if ('vibrate' in navigator) {
         if (type === 'light') navigator.vibrate(10);
@@ -100,7 +98,7 @@
 }
 </script>
 </head>
-<body class="bg-slate-50">
+<body>
   <div id="root"></div>
   <script type="module" src="./index.tsx"></script>
 </body>
