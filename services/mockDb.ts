@@ -29,7 +29,7 @@ class DbService {
       name: user.name,
       email: user.email,
       avatar: user.avatar,
-      last_active: Date.now(), // Back to numeric for BigInt
+      last_active: Date.now(),
       role: user.role
     };
     
@@ -46,7 +46,7 @@ class DbService {
 
   async heartbeat(userId: string, roomId?: string) {
     if (!userId) return;
-    const payload: any = { last_active: Date.now() }; // Back to numeric for BigInt
+    const payload: any = { last_active: Date.now() };
     if (roomId) payload.room_id = roomId;
     
     const { error } = await supabase
@@ -77,7 +77,7 @@ class DbService {
         name: newUser.name,
         email: newUser.email,
         avatar: newUser.avatar,
-        last_active: Date.now(), // Back to numeric for BigInt
+        last_active: Date.now(),
         role: newUser.role,
         password: password
       }]);
@@ -173,6 +173,7 @@ class DbService {
     if (!taskData.roomId) return { data: null, error: "Missing Room ID" };
 
     try {
+      // FIX: Removed manual 'created_at' to let Supabase use its default column value
       const { data, error } = await supabase
         .from('tasks')
         .insert([{
@@ -184,16 +185,25 @@ class DbService {
           assigned_to_name: taskData.assignedToName,
           created_by_id: taskData.createdById,
           created_by_name: taskData.createdByName,
-          status: taskData.status,
-          created_at: Date.now() // Use numeric
+          status: taskData.status
         }])
         .select();
         
       if (error) {
-        return { data: null, error: `${error.message} (Code: ${error.code})` };
+        console.error('Task Create Error:', error);
+        return { data: null, error: `${error.message}` };
       }
       
-      const task: Task = { ...taskData, id: data[0].id, createdAt: parseTimestamp(data[0].created_at) };
+      if (!data || data.length === 0) {
+        return { data: null, error: "No data returned after insert" };
+      }
+
+      const task: Task = { 
+        ...taskData, 
+        id: data[0].id, 
+        createdAt: parseTimestamp(data[0].created_at) 
+      };
+
       await this.addLog({
         taskId: task.id, taskName: task.name, roomId: task.roomId,
         fromUserId: task.createdById, fromUserName: task.createdByName,
@@ -203,6 +213,7 @@ class DbService {
 
       return { data: task };
     } catch (err: any) {
+      console.error('Task Create Catch:', err);
       return { data: null, error: err.message };
     }
   }
@@ -232,7 +243,6 @@ class DbService {
     const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     
     if (task && user) {
-      // FIX: Removed 'completed_at' because column doesn't exist in schema
       const { error: patchError } = await supabase.from('tasks').update({ 
         status: 'COMPLETED'
       }).eq('id', taskId);
@@ -279,7 +289,7 @@ class DbService {
     if (error || !data) return [];
     return data.map((d: any) => ({
       id: d.id, taskId: d.task_id, taskName: d.task_name, roomId: d.room_id,
-      fromUserId: d.from_user_id, fromUserName: d.from_user_name,
+      fromUserId: d.from_user_id, from_user_name: d.from_user_name,
       toUserId: d.to_user_id, toUserName: d.to_user_name, action: d.action,
       timestamp: parseTimestamp(d.timestamp || d.created_at)
     })).sort((a: any, b: any) => b.timestamp - a.timestamp);
@@ -290,8 +300,7 @@ class DbService {
       room_id: roomId, 
       sender_id: senderId, 
       sender_name: senderName, 
-      text: text || null, 
-      timestamp: Date.now() // Use numeric
+      text: text || null
     };
 
     if (audioData) {
@@ -305,7 +314,7 @@ class DbService {
       const { data, error } = await supabase.from('messages').insert([payload]).select();
       if (error) {
         console.error('Message Sync Error:', error);
-        return { data: null, error: `${error.message} (Code: ${error.code})` };
+        return { data: null, error: `${error.message}` };
       }
       if (!data?.[0]) return { data: null, error: "Record inserted but not returned" };
       
@@ -317,7 +326,7 @@ class DbService {
         text: data[0].text, 
         audioData: data[0].audio_data, 
         type: data[0].type || 'text', 
-        timestamp: parseTimestamp(data[0].timestamp) 
+        timestamp: parseTimestamp(data[0].timestamp || data[0].created_at) 
       };
       return { data: msg };
     } catch (e: any) {
@@ -329,8 +338,8 @@ class DbService {
     if (!roomId) return [];
     const { data, error } = await supabase.from('messages').select('*').eq('room_id', roomId);
     if (error) return [];
-    return data.sort((a: any, b: any) => (parseTimestamp(a.timestamp) - parseTimestamp(b.timestamp))).map((d: any) => ({
-      id: d.id, roomId: d.room_id, senderId: d.sender_id, senderName: d.sender_name, text: d.text, audioData: d.audio_data, type: d.type || 'text', timestamp: parseTimestamp(d.timestamp)
+    return data.sort((a: any, b: any) => (parseTimestamp(a.timestamp || a.created_at) - parseTimestamp(b.timestamp || b.created_at))).map((d: any) => ({
+      id: d.id, roomId: d.room_id, senderId: d.sender_id, senderName: d.sender_name, text: d.text, audioData: d.audio_data, type: d.type || 'text', timestamp: parseTimestamp(d.timestamp || d.created_at)
     }));
   }
 
@@ -339,7 +348,7 @@ class DbService {
       task_id: log.taskId, task_name: log.taskName, room_id: log.roomId,
       from_user_id: log.fromUserId, from_user_name: log.fromUserName,
       to_user_id: log.toUserId, to_user_name: log.toUserName,
-      action: log.action, timestamp: Date.now() // Use numeric
+      action: log.action
     }]);
   }
 
