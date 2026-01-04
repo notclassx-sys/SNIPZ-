@@ -1,8 +1,18 @@
 {
   "name": "SNIPX LIBRARY - Team Room & Task Management",
-  "description": "A high-performance team workspace featuring room-based task management, real-time collaboration, and an admin-controlled environment with task pushing and activity tracking.",
+  "description": "Android 15 Optimized team workspace featuring Material 3 design, edge-to-edge immersion, and real-time collaboration with haptic feedback.",
   "requestFramePermissions": [
     "camera",
     "microphone"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "vibration"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ]
 }

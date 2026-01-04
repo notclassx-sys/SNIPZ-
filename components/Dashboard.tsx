@@ -13,20 +13,14 @@ const formatTimeAgo = (timestamp: number) => {
   if (diff < 15000) return 'Just now';
   if (diff < 60000) return 'Online';
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
-  const [stats, setStats] = useState({
-    total: 0,
-    completed: 0,
-    pending: 0,
-    activeMembers: 0
-  });
+  const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, activeMembers: 0 });
   const [logs, setLogs] = useState<TaskLog[]>([]);
   const [members, setMembers] = useState<User[]>([]);
   const [aiPulse, setAiPulse] = useState("Analyzing recent activity...");
@@ -43,9 +37,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     const roomLogs = await db.getLogs(user.roomId);
     const roomMembers = await db.getRoomMembers(user.roomId);
     
-    // Sort members by activity but keep current user at top if present
-    const sortedMembers = roomMembers.sort((a, b) => b.lastActive - a.lastActive);
-    
     setStats({
       total: allTasks.length,
       completed: allTasks.filter(t => t.status === 'COMPLETED').length,
@@ -53,123 +44,99 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       activeMembers: roomMembers.length
     });
     setLogs(roomLogs);
-    setMembers(sortedMembers);
+    setMembers(roomMembers.sort((a, b) => b.lastActive - a.lastActive));
 
     if (roomLogs.length > 0) {
       const summary = await getTeamActivitySummary(roomLogs);
       setAiPulse(summary);
-    } else {
-      setAiPulse("Your team workspace is ready for action.");
     }
   };
 
   return (
-    <div className="space-y-6 animate-fade-up">
-      <div className="flex flex-col">
-        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Ops Center</h2>
-        <p className="text-slate-400 font-medium">Workspace performance & metrics</p>
+    <div className="space-y-8 animate-m3-up">
+      <div className="flex flex-col px-1">
+        <h2 className="text-4xl font-extrabold text-slate-900 tracking-tightest">Ops Center</h2>
+        <p className="text-slate-400 font-bold text-sm tracking-wide">Dynamic team intelligence</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         {[
-          { label: 'Total Tasks', value: stats.total, color: 'green', icon: 'fa-layer-group' },
-          { label: 'Completed', value: stats.completed, color: 'emerald', icon: 'fa-circle-check' },
-          { label: 'In Pipeline', value: stats.pending, color: 'amber', icon: 'fa-clock' },
-          { label: 'Team Size', value: stats.activeMembers, color: 'blue', icon: 'fa-users' },
+          { label: 'Total', value: stats.total, color: 'emerald', icon: 'fa-cubes' },
+          { label: 'Ready', value: stats.completed, color: 'blue', icon: 'fa-circle-check' },
+          { label: 'Pending', value: stats.pending, color: 'amber', icon: 'fa-hourglass-half' },
+          { label: 'Nodes', value: stats.activeMembers, color: 'indigo', icon: 'fa-microchip' },
         ].map((stat, i) => (
-          <div key={i} className={`bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm animate-scale-in`} style={{animationDelay: `${i*0.05}s`}}>
-            <div className={`text-${stat.color}-500 text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center gap-2`}>
-              <i className={`fas ${stat.icon}`}></i>
-              {stat.label}
+          <div key={i} className={`bg-white p-6 rounded-[2.8rem] m3-card border border-slate-100 shadow-sm animate-m3-up`} style={{animationDelay: `${i*0.05}s`}}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-8 h-8 rounded-xl bg-${stat.color}-50 flex items-center justify-center text-${stat.color}-500 text-xs`}>
+                <i className={`fas ${stat.icon}`}></i>
+              </div>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
             </div>
-            <div className="text-4xl font-black text-slate-800 tracking-tighter">{stat.value}</div>
+            <div className="text-4xl font-black text-slate-900 tracking-tighter">{stat.value}</div>
           </div>
         ))}
       </div>
 
-      <div className="bg-green-500 p-6 rounded-[2.5rem] shadow-xl shadow-green-100 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700">
-           <i className="fas fa-wand-magic-sparkles text-8xl text-white"></i>
+      {/* Material 3 Surface Container (AI Section) */}
+      <div className="bg-slate-900 p-8 rounded-[3.2rem] shadow-2xl relative overflow-hidden m3-card group">
+        <div className="absolute top-0 right-0 p-6 opacity-20 pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+           <i className="fa-solid fa-bolt-lightning text-9xl text-emerald-400"></i>
         </div>
-        <div className="flex items-center gap-2 mb-2 relative z-10">
-          <i className="fas fa-microchip text-white"></i>
-          <span className="text-[10px] font-black text-green-100 uppercase tracking-widest">Team Pulse AI</span>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="px-3 py-1 bg-emerald-500/20 rounded-full border border-emerald-500/30">
+            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Team Pulse AI</span>
+          </div>
         </div>
-        <p className="text-lg font-bold text-white leading-tight relative z-10">"{aiPulse}"</p>
+        <p className="text-xl font-bold text-white leading-snug relative z-10 italic">"{aiPulse}"</p>
       </div>
 
-      <div>
-        <h3 className="text-xl font-extrabold text-slate-900 mb-4 flex items-center justify-between">
-          Movement
-          <span className="text-[10px] bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold uppercase tracking-wider">Real-time</span>
-        </h3>
+      <section>
+        <h3 className="text-xl font-extrabold text-slate-900 mb-5 px-1">Movement</h3>
         <div className="space-y-4">
-          {logs.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-[2rem] border border-dashed border-gray-200 text-slate-400 font-medium">No activity yet.</div>
-          ) : (
-            logs.map((log, i) => (
-              <div key={log.id} className="flex gap-4 items-start animate-fade-up" style={{animationDelay: `${i*0.05}s`}}>
-                <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 border-2 border-white shadow-sm ${
-                  log.action === 'PUSHED' ? 'bg-amber-400' : log.action === 'COMPLETED' ? 'bg-green-500' : 'bg-green-400'
-                }`}></div>
-                <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-50">
-                  <div className="text-sm leading-relaxed">
-                    <span className="font-bold text-slate-800">{log.fromUserName || 'System'}</span>
-                    <span className="text-slate-400 mx-1.5 lowercase font-medium">
-                      {log.action === 'PUSHED' ? 'pushed' : log.action === 'COMPLETED' ? 'finished' : 'created'}
-                    </span>
-                    <span className="font-extrabold text-green-600">"{log.taskName}"</span>
-                    {log.action === 'PUSHED' && (
-                      <>
-                        <span className="text-slate-400 mx-1.5 font-medium">to</span>
-                        <span className="font-bold text-slate-800">{log.toUserName}</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">
-                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
+          {logs.map((log, i) => (
+            <div key={log.id} className="flex gap-4 items-center animate-m3-up" style={{animationDelay: `${i*0.05}s`}}>
+              <div className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center text-lg ${
+                log.action === 'PUSHED' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+              }`}>
+                <i className={`fas ${log.action === 'PUSHED' ? 'fa-shuffle' : 'fa-check-double'}`}></i>
+              </div>
+              <div className="flex-1 bg-white p-5 rounded-[2rem] border border-slate-50 shadow-sm m3-card">
+                <div className="text-sm font-medium text-slate-600 leading-tight">
+                  <span className="font-bold text-slate-900">{log.fromUserName}</span> {log.action.toLowerCase()} <span className="text-emerald-600 font-bold underline decoration-2 underline-offset-4">"{log.taskName}"</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {log.action === 'PUSHED' && <div className="text-[9px] font-black bg-slate-50 px-2 py-0.5 rounded text-slate-400">-> {log.toUserName}</div>}
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      <div className="pt-6">
-        <h3 className="text-xl font-extrabold text-slate-900 mb-4 flex items-center justify-between">
-          Live Status
-          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-        </h3>
-        <div className="space-y-3">
-          {members.length === 0 ? (
-            <p className="text-center py-4 text-slate-400 font-bold">Syncing team members...</p>
-          ) : (
-            members.map((m, i) => (
-              <div key={m.id} className="flex items-center justify-between p-4 rounded-3xl bg-white border border-gray-100 shadow-sm animate-fade-up" style={{animationDelay: `${i*0.1}s`}}>
-                <div className="flex items-center gap-4">
-                  <img src={m.avatar} className="w-12 h-12 rounded-2xl border-2 border-green-50 shadow-sm" alt="" />
-                  <div>
-                    <div className="text-base font-bold text-slate-800">{m.name}</div>
-                    <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                      {m.role} {m.id === user.id && "• YOU"}
-                    </div>
-                  </div>
+      <section className="pb-10">
+        <h3 className="text-xl font-extrabold text-slate-900 mb-5 px-1">Active Nodes</h3>
+        <div className="grid grid-cols-1 gap-3">
+          {members.map((m, i) => (
+            <div key={m.id} className="flex items-center justify-between p-5 rounded-[2.2rem] bg-white border border-slate-100 shadow-sm m3-card animate-m3-up" style={{animationDelay: `${i*0.05}s`}}>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <img src={m.avatar} className="w-14 h-14 rounded-3xl bg-slate-50 p-1 border border-slate-200" alt="" />
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-white ${Date.now() - m.lastActive < 60000 ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
                 </div>
-                <div className="flex flex-col items-end">
-                   <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] text-slate-500 font-bold">{formatTimeAgo(m.lastActive)}</span>
-                      <div className={`w-2.5 h-2.5 rounded-full ${Date.now() - m.lastActive < 60000 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-gray-300'}`}></div>
-                   </div>
-                   <span className="text-[9px] text-slate-300 font-black uppercase tracking-tighter">
-                      Activity Monitor
-                   </span>
+                <div>
+                  <div className="text-base font-bold text-slate-900">{m.name}</div>
+                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{m.role} {m.id === user.id ? '• HOST' : ''}</div>
                 </div>
               </div>
-            ))
-          )}
+              <div className="text-right">
+                 <div className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full">{formatTimeAgo(m.lastActive)}</div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 };

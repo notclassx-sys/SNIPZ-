@@ -3,71 +3,89 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
   <title>SNIPX LIBRARY</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary-green: #22c55e;
-      --light-green: #f0fdf4;
-      --deep-slate: #0f172a;
+      --m3-primary: #10b981;
+      --m3-surface: #f8fafc;
+      --m3-container: #ffffff;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
+    
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: #ffffff;
-      color: #1e293b;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--m3-surface);
+      color: #0f172a;
       overflow-x: hidden;
       -webkit-tap-highlight-color: transparent;
+      scroll-behavior: smooth;
     }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 4px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #e2e8f0;
-      border-radius: 10px;
-    }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
     .glass-effect {
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(0, 0, 0, 0.05);
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Android 15 Fluid Motion */
+    @keyframes m3-spring-up {
+      0% { opacity: 0; transform: translateY(30px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
     }
     
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    @keyframes m3-ripple {
+      0% { transform: scale(0); opacity: 0.5; }
+      100% { transform: scale(4); opacity: 0; }
     }
-    @keyframes scaleIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
+
+    .animate-m3-up {
+      animation: m3-spring-up 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
-    @keyframes slideInRight {
-      from { opacity: 0; transform: translateX(30px); }
-      to { opacity: 1; transform: translateX(0); }
+
+    .touch-target {
+      min-height: 48px;
+      min-width: 48px;
     }
-    .animate-fade-up { animation: fadeInUp 0.5s ease-out forwards; }
-    .animate-scale-in { animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    .animate-slide-right { animation: slideInRight 0.4s ease-out forwards; }
+
+    .edge-to-edge-header {
+      padding-top: calc(0.75rem + var(--safe-top));
+    }
+
+    .edge-to-edge-nav {
+      padding-bottom: calc(0.5rem + var(--safe-bottom));
+      height: calc(5rem + var(--safe-bottom));
+    }
+
+    .m3-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
     
-    .stagger-1 { animation-delay: 0.1s; }
-    .stagger-2 { animation-delay: 0.2s; }
-    .stagger-3 { animation-delay: 0.3s; }
-    
-    .btn-bounce:active {
-      transform: scale(0.96);
+    .m3-card:active {
+      transform: scale(0.97);
+      filter: brightness(0.95);
     }
   </style>
   <script>
-    // Essential Shim to prevent "process is not defined" crash on Vercel/Static hosting
-    window.process = { 
-      env: { 
-        API_KEY: '' // Will be populated by the environment if available
-      } 
+    window.process = { env: { API_KEY: '' } };
+    
+    // Android Haptic Engine Simulation
+    window.haptic = (type = 'light') => {
+      if ('vibrate' in navigator) {
+        if (type === 'light') navigator.vibrate(10);
+        else if (type === 'medium') navigator.vibrate(20);
+        else if (type === 'heavy') navigator.vibrate([10, 30, 10]);
+      }
     };
   </script>
 <script type="importmap">
@@ -82,9 +100,8 @@
 }
 </script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-slate-50">
   <div id="root"></div>
-  <!-- Explicit entry point script -->
   <script type="module" src="./index.tsx"></script>
 </body>
 </html>
