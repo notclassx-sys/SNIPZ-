@@ -3,86 +3,69 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff">
   <title>SNIPX LIBRARY</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
+    @charset "UTF-8";
+    
     :root {
       --m3-primary: #10b981;
-      --m3-surface: #f8fafc;
-      --m3-container: #ffffff;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 20px);
+      --safe-bottom: env(safe-area-inset-bottom, 20px);
     }
     
-    /* Global Reset & Base Layout (Native CSS Fallbacks) */
-    * { box-sizing: border-box; }
+    /* Native CSS Fallbacks (Works without Tailwind) */
     body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       background-color: #f8fafc;
       margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-      overflow-x: hidden;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Fixed sizes to prevent "Large Image" bug if Tailwind fails */
-    img { max-width: 100%; height: auto; object-fit: cover; }
-    .avatar-sm { width: 40px !important; height: 40px !important; border-radius: 12px; }
-    .avatar-md { width: 56px !important; height: 56px !important; border-radius: 18px; }
-    .avatar-lg { width: 128px !important; height: 128px !important; border-radius: 48px; }
+    /* Fixed sizes to stop 'Exploding Avatar' bug */
+    .avatar-fixed-sm { width: 40px !important; height: 40px !important; border-radius: 12px; object-fit: cover; }
+    .avatar-fixed-md { width: 56px !important; height: 56px !important; border-radius: 18px; object-fit: cover; }
+    .avatar-fixed-lg { width: 120px !important; height: 120px !important; border-radius: 40px; object-fit: cover; }
 
-    /* Android 15 Edge-to-Edge Immersion Fixes */
-    .edge-to-edge-header {
-      padding-top: calc(1rem + var(--safe-top)) !important;
+    header {
       position: fixed;
       top: 0; left: 0; right: 0;
-      z-index: 50;
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(20px);
+      padding-top: var(--safe-top);
+      border-bottom: 1px solid #f1f5f9;
+      z-index: 100;
     }
 
-    .edge-to-edge-nav {
-      padding-bottom: calc(0.75rem + var(--safe-bottom)) !important;
+    nav {
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      z-index: 50;
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(20px);
-    }
-
-    .m3-card {
       background: white;
-      border-radius: 2.2rem;
-      border: 1px solid rgba(0,0,0,0.05);
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    
-    .m3-card:active { transform: scale(0.96); }
-
-    /* Ensure grids don't collapse on mobile */
-    .stat-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      padding-bottom: var(--safe-bottom);
+      border-top: 1px solid #f1f5f9;
+      z-index: 100;
+      display: flex;
+      justify-content: space-around;
     }
 
-    @keyframes m3-fade-up {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-m3 { animation: m3-fade-up 0.5s ease-out forwards; }
+    /* Prevent text merging on mobile */
+    .log-entry span { margin-right: 4px; }
   </style>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  
   <script>
     window.process = { env: { API_KEY: '' } };
     window.haptic = (type = 'light') => {
       if ('vibrate' in navigator) {
         if (type === 'light') navigator.vibrate(10);
-        else if (type === 'medium') navigator.vibrate(20);
-        else if (type === 'heavy') navigator.vibrate([10, 30, 10]);
+        else if (type === 'heavy') navigator.vibrate(30);
       }
     };
   </script>

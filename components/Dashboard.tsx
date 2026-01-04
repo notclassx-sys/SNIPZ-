@@ -13,9 +13,7 @@ const formatTimeAgo = (timestamp: number) => {
   if (diff < 30000) return 'Just now';
   const mins = Math.floor(diff / 60000);
   if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  return `${Math.floor(mins / 60)}h ago`;
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
@@ -57,10 +55,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     <div className="space-y-8 animate-m3">
       <div className="px-1">
         <h2 className="text-4xl font-extrabold text-slate-900 tracking-tighter">Ops Center</h2>
-        <p className="text-slate-400 font-bold text-sm">Real-time workspace intelligence</p>
+        <p className="text-slate-500 font-bold text-sm mt-1">Workspace intelligence & performance</p>
       </div>
 
-      {/* Grid using native CSS fallback class */}
       <div className="stat-grid">
         {[
           { label: 'Total', value: stats.total, color: 'emerald', icon: 'fa-cubes' },
@@ -69,7 +66,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           { label: 'Nodes', value: stats.activeMembers, color: 'indigo', icon: 'fa-user-group' },
         ].map((stat, i) => (
           <div key={i} className="m3-card p-6 flex flex-col items-start gap-1">
-            <div className={`w-8 h-8 rounded-xl bg-${stat.color}-50 flex items-center justify-center text-${stat.color}-500 text-xs mb-1`}>
+            <div className={`w-8 h-8 rounded-xl bg-${stat.color}-50 flex items-center justify-center text-${stat.color}-500 text-xs mb-2`}>
               <i className={`fas ${stat.icon}`}></i>
             </div>
             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{stat.label}</span>
@@ -87,28 +84,28 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">AI Pulse</span>
           </div>
         </div>
-        <p className="text-lg font-bold text-white leading-snug italic">"{aiPulse}"</p>
+        <p className="text-lg font-bold text-white leading-snug italic relative z-10">"{aiPulse}"</p>
       </div>
 
       <section>
-        <h3 className="text-xl font-extrabold text-slate-900 mb-5 px-1 flex items-center gap-2">
+        <h3 className="text-xl font-extrabold text-slate-900 mb-6 px-1 flex items-center gap-2">
           <i className="fa-solid fa-bolt text-emerald-500 text-sm"></i> Movement
         </h3>
-        <div className="space-y-3">
-          {logs.slice(0, 5).map((log, i) => (
-            <div key={log.id} className="m3-card p-5 flex items-center gap-4 animate-m3" style={{animationDelay: `${i*0.1}s`}}>
+        <div className="space-y-4">
+          {logs.slice(0, 10).map((log, i) => (
+            <div key={log.id} className="m3-card p-5 flex items-center gap-4 animate-m3">
               <div className={`w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center text-sm ${
                 log.action === 'PUSHED' ? 'bg-amber-50 text-amber-500' : 'bg-emerald-50 text-emerald-500'
               }`}>
                 <i className={`fas ${log.action === 'PUSHED' ? 'fa-shuffle' : 'fa-check'}`}></i>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-slate-800 flex flex-wrap items-center gap-x-1">
+                <div className="text-[13px] font-bold text-slate-800 flex flex-wrap items-center">
                   <span>{log.fromUserName}</span>
-                  <span className="text-[10px] font-black text-slate-300 uppercase">{log.action}</span>
-                  <span className="text-emerald-600 truncate underline decoration-emerald-200 underline-offset-4">{log.taskName}</span>
+                  <span className="mx-1.5 text-[10px] font-black text-slate-400 uppercase tracking-tighter">{log.action.toLowerCase()}</span>
+                  <span className="text-emerald-600 truncate underline decoration-emerald-200 underline-offset-4">"{log.taskName}"</span>
                 </div>
-                <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">
+                <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1.5">
                   {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
@@ -117,14 +114,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
       </section>
 
-      <section className="pb-10">
-        <h3 className="text-xl font-extrabold text-slate-900 mb-5 px-1">Active Now</h3>
+      <section className="pb-12">
+        <h3 className="text-xl font-extrabold text-slate-900 mb-5 px-1">Node Status</h3>
         <div className="grid grid-cols-1 gap-3">
-          {members.map((m, i) => (
-            <div key={m.id} className="m3-card p-4 flex items-center justify-between animate-m3" style={{animationDelay: `${i*0.1}s`}}>
+          {members.map((m) => (
+            <div key={m.id} className="m3-card p-4 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="relative">
-                  <img src={m.avatar} className="avatar-md bg-slate-100 border border-slate-100" alt="" />
+                <div className="relative" style={{ width: '56px', height: '56px' }}>
+                  <img 
+                    src={m.avatar} 
+                    className="avatar-fixed-md bg-slate-50 border border-slate-100 shadow-sm" 
+                    style={{ width: '56px', height: '56px', borderRadius: '18px' }}
+                    alt="" 
+                  />
                   <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-white ${Date.now() - m.lastActive < 60000 ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
                 </div>
                 <div>
@@ -133,7 +135,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
               </div>
               <div className="text-right">
-                 <div className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full">{formatTimeAgo(m.lastActive)}</div>
+                 <div className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase">{formatTimeAgo(m.lastActive)}</div>
               </div>
             </div>
           ))}
