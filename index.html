@@ -12,54 +12,65 @@
     @charset "UTF-8";
     
     :root {
-      --m3-primary: #10b981;
+      --primary: #10b981;
+      --bg: #f8fafc;
       --safe-top: env(safe-area-inset-top, 20px);
       --safe-bottom: env(safe-area-inset-bottom, 20px);
     }
     
+    /* Native Fallbacks for Android 15 (if Tailwind fails) */
     body {
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-      background-color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background-color: var(--bg);
       margin: 0;
       color: #0f172a;
-      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
+
+    header {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(10px);
+      padding-top: var(--safe-top);
+      border-bottom: 1px solid #e2e8f0;
+      z-index: 1000;
+      height: 80px;
+    }
+
+    nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: white;
+      padding-bottom: var(--safe-bottom);
+      border-top: 1px solid #e2e8f0;
+      z-index: 1000;
+      display: flex;
+    }
+
+    main { padding-top: 100px; padding-bottom: 100px; width: 92%; margin: 0 auto; }
 
     .stat-grid {
       display: grid !important;
       grid-template-columns: 1fr 1fr !important;
-      gap: 16px !important;
-      width: 100% !important;
+      gap: 12px !important;
+      margin-bottom: 24px;
     }
 
     .m3-card {
       background: white;
-      border-radius: 2rem;
-      border: 1px solid rgba(0,0,0,0.04);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+      border-radius: 24px;
+      padding: 16px;
+      border: 1px solid rgba(0,0,0,0.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+      margin-bottom: 16px;
     }
 
-    .avatar-fixed-md { width: 56px !important; height: 56px !important; border-radius: 18px; object-fit: cover; }
+    .avatar-sm { width: 32px !important; height: 32px !important; border-radius: 8px; }
+    .avatar-md { width: 48px !important; height: 48px !important; border-radius: 12px; }
+    .avatar-lg { width: 120px !important; height: 120px !important; border-radius: 32px; }
 
-    header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      background: rgba(255,255,255,0.8);
-      backdrop-filter: blur(20px);
-      padding-top: var(--safe-top);
-      border-bottom: 1px solid #f1f5f9;
-      z-index: 100;
-    }
-
-    nav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      background: rgba(255,255,255,0.9);
-      backdrop-filter: blur(20px);
-      padding-bottom: var(--safe-bottom);
-      border-top: 1px solid #f1f5f9;
-      z-index: 100;
-    }
+    /* Fix Merged Text */
+    .label-text { display: block; margin-bottom: 2px; font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; }
+    .value-text { display: block; font-size: 13px; font-weight: 700; color: #1e293b; }
   </style>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -69,10 +80,7 @@
   <script>
     window.process = { env: { API_KEY: '' } };
     window.haptic = (type = 'light') => {
-      if ('vibrate' in navigator) {
-        if (type === 'light') navigator.vibrate(10);
-        else if (type === 'heavy') navigator.vibrate(30);
-      }
+      if ('vibrate' in navigator) navigator.vibrate(type === 'light' ? 10 : 30);
     };
   </script>
 <script type="importmap">
@@ -89,6 +97,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>
