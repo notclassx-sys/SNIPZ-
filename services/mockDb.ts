@@ -173,7 +173,7 @@ class DbService {
     if (!taskData.roomId) return { data: null, error: "Missing Room ID" };
 
     try {
-      // FIX: Removed manual 'created_at' to let Supabase use its default column value
+      // Re-added created_at as bigint/number for database compatibility
       const { data, error } = await supabase
         .from('tasks')
         .insert([{
@@ -185,7 +185,8 @@ class DbService {
           assigned_to_name: taskData.assignedToName,
           created_by_id: taskData.createdById,
           created_by_name: taskData.createdByName,
-          status: taskData.status
+          status: taskData.status,
+          created_at: Date.now() 
         }])
         .select();
         
@@ -244,7 +245,8 @@ class DbService {
     
     if (task && user) {
       const { error: patchError } = await supabase.from('tasks').update({ 
-        status: 'COMPLETED'
+        status: 'COMPLETED',
+        completed_at: Date.now()
       }).eq('id', taskId);
 
       if (patchError) {
@@ -289,7 +291,7 @@ class DbService {
     if (error || !data) return [];
     return data.map((d: any) => ({
       id: d.id, taskId: d.task_id, taskName: d.task_name, roomId: d.room_id,
-      fromUserId: d.from_user_id, from_user_name: d.from_user_name,
+      fromUserId: d.from_user_id, fromUserName: d.from_user_name,
       toUserId: d.to_user_id, toUserName: d.to_user_name, action: d.action,
       timestamp: parseTimestamp(d.timestamp || d.created_at)
     })).sort((a: any, b: any) => b.timestamp - a.timestamp);
@@ -300,7 +302,8 @@ class DbService {
       room_id: roomId, 
       sender_id: senderId, 
       sender_name: senderName, 
-      text: text || null
+      text: text || null,
+      timestamp: Date.now() // Re-added to fix NOT NULL constraint
     };
 
     if (audioData) {
@@ -348,7 +351,8 @@ class DbService {
       task_id: log.taskId, task_name: log.taskName, room_id: log.roomId,
       from_user_id: log.fromUserId, from_user_name: log.fromUserName,
       to_user_id: log.toUserId, to_user_name: log.toUserName,
-      action: log.action
+      action: log.action,
+      timestamp: Date.now() // Re-added to fix NOT NULL constraint
     }]);
   }
 
