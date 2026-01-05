@@ -7,13 +7,23 @@ export interface DbResult<T> {
   error?: string;
 }
 
+/**
+ * Utility to ensure we always have a valid numeric timestamp for the UI
+ */
 const parseTimestamp = (val: any): number => {
   if (!val) return Date.now();
   if (typeof val === 'number') return val;
+  // Handle numeric strings
   if (typeof val === 'string' && /^\d+$/.test(val)) return parseInt(val, 10);
+  // Handle ISO strings (e.g. from Supabase timestamptz)
   const parsed = new Date(val).getTime();
   return isNaN(parsed) ? Date.now() : parsed;
 };
+
+/**
+ * Utility to format dates for Supabase consumption
+ */
+const toDbTime = () => new Date().toISOString();
 
 class DbService {
   private currentUser: User | null = null;
@@ -28,7 +38,7 @@ class DbService {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
-        last_active: Date.now(),
+        last_active: toDbTime(),
         role: user.role
       };
       
@@ -45,7 +55,7 @@ class DbService {
   async heartbeat(userId: string, roomId?: string) {
     if (!userId) return;
     try {
-      const payload: any = { last_active: Date.now() };
+      const payload: any = { last_active: toDbTime() };
       if (roomId) payload.room_id = roomId;
       await supabase.from('profiles').update(payload).eq('id', userId);
     } catch (e) {
@@ -74,7 +84,7 @@ class DbService {
           name: newUser.name,
           email: newUser.email,
           avatar: newUser.avatar,
-          last_active: Date.now(),
+          last_active: toDbTime(),
           role: newUser.role,
           password: password
         }]);
@@ -189,24 +199,30 @@ class DbService {
     if (!taskData.roomId) return { data: null, error: "Missing Room ID" };
 
     try {
+      const payload = {
+        room_id: taskData.roomId,
+        name: taskData.name,
+        description: taskData.description,
+        deadline: taskData.deadline,
+        assigned_to_id: taskData.assignedToId,
+        assigned_to_name: taskData.assignedToName,
+        created_by_id: taskData.createdById,
+        created_by_name: taskData.createdByName,
+        status: taskData.status,
+        created_at: toDbTime()
+      };
+
       const { data, error } = await supabase
         .from('tasks')
-        .insert([{
-          room_id: taskData.roomId,
-          name: taskData.name,
-          description: taskData.description,
-          deadline: taskData.deadline,
-          assigned_to_id: taskData.assignedToId,
-          assigned_to_name: taskData.assignedToName,
-          created_by_id: taskData.createdById,
-          created_by_name: taskData.createdByName,
-          status: taskData.status,
-          created_at: Date.now() 
-        }])
+        .insert([payload])
         .select();
         
-      if (error) return { data: null, error: error.message };
-      if (!data?.[0]) return { data: null, error: "Failed to create record" };
+      if (error) {
+        console.error('Detailed Supabase Error:', error);
+        return { data: null, error: error.message };
+      }
+      
+      if (!data?.[0]) return { data: null, error: "Failed to create record - no data returned." };
 
       const task: Task = { 
         ...taskData, 
@@ -257,7 +273,6 @@ class DbService {
       const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
       
       if (task && user) {
-        // FIX: Removed 'completed_at' because it does not exist in your tasks table schema.
         const { error: patchError } = await supabase.from('tasks').update({ 
           status: 'COMPLETED'
         }).eq('id', taskId);
@@ -292,7 +307,6 @@ class DbService {
         assignedToId: d.assigned_to_id, assignedToName: d.assigned_to_name,
         createdById: d.created_by_id, createdByName: d.created_by_name, status: d.status,
         createdAt: parseTimestamp(d.created_at)
-        // Note: completed_at is omitted because it doesn't exist in the table
       }));
     } catch (e) {
       return [];
@@ -322,7 +336,7 @@ class DbService {
         sender_id: senderId, 
         sender_name: senderName, 
         text: text || null,
-        timestamp: Date.now()
+        timestamp: toDbTime()
       };
 
       if (audioData) {
@@ -372,7 +386,7 @@ class DbService {
         from_user_id: log.fromUserId, from_user_name: log.fromUserName,
         to_user_id: log.toUserId, to_user_name: log.toUserName,
         action: log.action,
-        timestamp: Date.now()
+        timestamp: toDbTime()
       }]);
     } catch (e) {
       console.error('Logging failed:', e);

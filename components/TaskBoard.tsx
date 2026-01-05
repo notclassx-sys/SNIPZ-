@@ -31,7 +31,16 @@ const CreateTaskModal: React.FC<{
       if (result.data) {
         onTaskCreated();
         onClose();
+        // Reset form
+        setName('');
+        setDescription('');
+        setDeadline('');
+        setAssignedToId('');
+      } else {
+        alert(`TASK DEPLOY ERROR: ${result.error}\n\nCheck your Supabase "tasks" table schema (columns and types).`);
       }
+    } catch (err: any) {
+      alert(`CRITICAL ERROR: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -45,17 +54,29 @@ const CreateTaskModal: React.FC<{
           <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><i className="fas fa-times"></i></button>
         </div>
         <div className="space-y-4">
-          <input className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none focus:ring-2 focus:ring-emerald-500" placeholder="Task Name" value={name} onChange={e => setName(e.target.value)} />
-          <textarea className="w-full p-4 bg-slate-50 rounded-2xl h-24 border-none focus:ring-2 focus:ring-emerald-500" placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} />
-          <div className="grid grid-cols-2 gap-4">
-            <select className="p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500" value={assignedToId} onChange={e => setAssignedToId(e.target.value)}>
-              <option value="">Assign To...</option>
-              {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            <input type="date" className="p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500" value={deadline} onChange={e => setDeadline(e.target.value)} />
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 block">Title</label>
+            <input className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g. Weekly Report" value={name} onChange={e => setName(e.target.value)} />
           </div>
-          <button onClick={handleConfirm} disabled={isSubmitting || !name || !assignedToId || !deadline} className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest mt-4 shadow-xl shadow-emerald-100 disabled:opacity-50">
-            {isSubmitting ? 'Syncing...' : 'Deploy Task'}
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 block">Context</label>
+            <textarea className="w-full p-4 bg-slate-50 rounded-2xl h-24 border-none focus:ring-2 focus:ring-emerald-500" placeholder="Describe the requirements..." value={description} onChange={e => setDescription(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 block">Assignee</label>
+              <select className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 font-bold" value={assignedToId} onChange={e => setAssignedToId(e.target.value)}>
+                <option value="">Select...</option>
+                {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase mb-1 ml-1 block">Due Date</label>
+              <input type="date" className="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 font-bold" value={deadline} onChange={e => setDeadline(e.target.value)} />
+            </div>
+          </div>
+          <button onClick={handleConfirm} disabled={isSubmitting || !name || !assignedToId || !deadline} className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest mt-4 shadow-xl shadow-emerald-100 disabled:opacity-50 btn-bounce">
+            {isSubmitting ? 'DEPLOYING...' : 'DEPLOY TASK'}
           </button>
         </div>
       </div>
@@ -87,8 +108,9 @@ const TaskBoard: React.FC<{ mode: 'ALL' | 'MY', user: User }> = ({ mode, user })
 
   const handleComplete = async (id: string) => {
     (window as any).haptic?.('heavy');
-    await db.completeTask(id, user.id);
-    loadData();
+    const success = await db.completeTask(id, user.id);
+    if (success) loadData();
+    else alert("Failed to complete task. Check connection.");
   };
 
   const handlePush = async (taskId: string, targetMemberId: string) => {
@@ -97,6 +119,8 @@ const TaskBoard: React.FC<{ mode: 'ALL' | 'MY', user: User }> = ({ mode, user })
     if (success) {
       setPushingTaskId(null);
       loadData();
+    } else {
+      alert("Push failed. Member might have left the room.");
     }
   };
 
@@ -114,7 +138,7 @@ const TaskBoard: React.FC<{ mode: 'ALL' | 'MY', user: User }> = ({ mode, user })
 
       <div className="space-y-4">
         {tasks.map(task => (
-          <div key={task.id} className="m3-card" style={{ background: 'white', borderRadius: '24px', padding: '16px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', marginBottom: '16px' }}>
+          <div key={task.id} className="m3-card bg-white rounded-[24px] p-4 border border-black/5 shadow-sm mb-4">
             <div className="flex justify-between items-start mb-1">
               <h3 className="text-lg font-black text-slate-900 leading-tight">{task.name}</h3>
               {task.status === 'COMPLETED' && (
@@ -124,20 +148,20 @@ const TaskBoard: React.FC<{ mode: 'ALL' | 'MY', user: User }> = ({ mode, user })
             <p className="text-slate-500 text-sm mb-4 line-clamp-2">{task.description}</p>
             
             <div className="flex items-center gap-6 py-4 border-t border-slate-50 mt-4">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="flex items-center gap-3">
                 <img 
                   src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${task.assignedToName}`} 
-                  style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#f8fafc' }} 
+                  className="w-10 h-10 rounded-xl bg-slate-50" 
                   alt="" 
                 />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span className="label-text" style={{ display: 'block', marginBottom: '2px', fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase' }}>Assignee</span>
-                  <span className="value-text" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>{task.assignedToName}</span>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase">Assignee</span>
+                  <span className="text-xs font-bold text-slate-800">{task.assignedToName}</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', borderLeft: '1px solid #f1f5f9', paddingLeft: '16px' }}>
-                <span className="label-text" style={{ display: 'block', marginBottom: '2px', fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase' }}>Deadline</span>
-                <span className="value-text" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>{task.deadline}</span>
+              <div className="flex flex-col border-left border-slate-100 pl-4">
+                <span className="text-[10px] font-black text-slate-400 uppercase">Deadline</span>
+                <span className="text-xs font-bold text-slate-800">{task.deadline}</span>
               </div>
             </div>
 
@@ -172,7 +196,6 @@ const TaskBoard: React.FC<{ mode: 'ALL' | 'MY', user: User }> = ({ mode, user })
                         src={m.avatar} 
                         className="w-10 h-10 rounded-xl border-2 border-white shadow-sm" 
                         alt={m.name} 
-                        style={{ width: '40px', height: '40px', borderRadius: '12px' }}
                       />
                       <span className="text-[9px] font-bold text-slate-600 truncate w-12 text-center">{m.name.split(' ')[0]}</span>
                     </button>
