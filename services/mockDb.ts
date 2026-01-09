@@ -12,18 +12,19 @@ export interface DbResult<T> {
  */
 const parseTimestamp = (val: any): number => {
   if (!val) return Date.now();
-  if (typeof val === 'number') return val;
-  // Handle numeric strings
+  if (typeof val === 'number') return Math.floor(val);
+  // Handle numeric strings (bigint from Postgres often comes as string in JS)
   if (typeof val === 'string' && /^\d+$/.test(val)) return parseInt(val, 10);
-  // Handle ISO strings (e.g. from Supabase timestamptz)
+  // Handle ISO strings just in case some old data exists
   const parsed = new Date(val).getTime();
-  return isNaN(parsed) ? Date.now() : parsed;
+  return isNaN(parsed) ? Date.now() : Math.floor(parsed);
 };
 
 /**
- * Utility to format dates for Supabase consumption
+ * Utility to format dates for Supabase BigInt consumption (Numeric Epoch)
+ * Returns a clean integer to satisfy Postgres BIGINT columns.
  */
-const toDbTime = () => new Date().toISOString();
+const toDbTime = (): number => Math.floor(Date.now());
 
 class DbService {
   private currentUser: User | null = null;
@@ -218,11 +219,11 @@ class DbService {
         .select();
         
       if (error) {
-        console.error('Detailed Supabase Error:', error);
+        console.error('Task Insert Error:', error);
         return { data: null, error: error.message };
       }
       
-      if (!data?.[0]) return { data: null, error: "Failed to create record - no data returned." };
+      if (!data?.[0]) return { data: null, error: "No data returned." };
 
       const task: Task = { 
         ...taskData, 
@@ -234,7 +235,7 @@ class DbService {
         taskId: task.id, taskName: task.name, roomId: task.roomId,
         fromUserId: task.createdById, fromUserName: task.createdByName,
         toUserId: task.assignedToId, toUserName: task.assignedToName,
-        action: 'CREATED', timestamp: Date.now()
+        action: 'CREATED', timestamp: toDbTime()
       });
 
       return { data: task };
@@ -257,7 +258,7 @@ class DbService {
           taskId: task.id, taskName: task.name, roomId: task.room_id,
           fromUserId: currentUserId, fromUserName: fromUser.name,
           toUserId: newAssigneeId, toUserName: toUser.name,
-          action: 'PUSHED', timestamp: Date.now()
+          action: 'PUSHED', timestamp: toDbTime()
         });
         return true;
       }
@@ -267,7 +268,7 @@ class DbService {
     return false;
   }
 
-  async completeTask(taskId: string, userId: string): Promise<boolean> {
+  async completeTask(taskId: string, userId: string): Promise<DbResult<boolean>> {
     try {
       const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).maybeSingle();
       const { data: user } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
@@ -278,22 +279,22 @@ class DbService {
         }).eq('id', taskId);
 
         if (patchError) {
-          console.error('Complete Task Error:', patchError.message);
-          return false;
+          console.error('Complete Task DB Error:', patchError);
+          return { data: false, error: patchError.message };
         }
 
         await this.addLog({
           taskId: task.id, taskName: task.name, roomId: task.room_id,
           fromUserId: userId, fromUserName: user.name,
           toUserId: task.created_by_id, toUserName: task.created_by_name,
-          action: 'COMPLETED', timestamp: Date.now()
+          action: 'COMPLETED', timestamp: toDbTime()
         });
-        return true;
+        return { data: true };
       }
-    } catch (e) {
-      console.error('Complete task process failed:', e);
+      return { data: false, error: "Task or User not found" };
+    } catch (e: any) {
+      return { data: false, error: e.message };
     }
-    return false;
   }
 
   async getTasks(roomId: string): Promise<Task[]> {
@@ -320,7 +321,7 @@ class DbService {
       if (error || !data) return [];
       return data.map((d: any) => ({
         id: d.id, taskId: d.task_id, taskName: d.task_name, roomId: d.room_id,
-        fromUserId: d.from_user_id, fromUserName: d.from_user_name,
+        fromUserId: d.from_user_id, from_user_name: d.from_user_name,
         toUserId: d.to_user_id, toUserName: d.to_user_name, action: d.action,
         timestamp: parseTimestamp(d.timestamp || d.created_at)
       })).sort((a: any, b: any) => b.timestamp - a.timestamp);
@@ -331,12 +332,13 @@ class DbService {
 
   async addMessage(roomId: string, senderId: string, senderName: string, text?: string, audioData?: string): Promise<DbResult<Message>> {
     try {
+      const msgTime = toDbTime();
       const payload: any = { 
         room_id: roomId, 
         sender_id: senderId, 
         sender_name: senderName, 
         text: text || null,
-        timestamp: toDbTime()
+        timestamp: msgTime // Numeric BIGINT
       };
 
       if (audioData) {
@@ -346,9 +348,15 @@ class DbService {
         payload.type = 'text';
       }
       
+      // LOG TO CONSOLE TO VERIFY TYPE IN BROWSER
+      console.log('Sending message payload:', payload);
+
       const { data, error } = await supabase.from('messages').insert([payload]).select();
-      if (error) return { data: null, error: error.message };
-      if (!data?.[0]) return { data: null, error: "Insert failed" };
+      if (error) {
+        console.error('Chat Insert Error:', error);
+        return { data: null, error: error.message };
+      }
+      if (!data?.[0]) return { data: null, error: "No data returned" };
       
       const msg: Message = { 
         id: data[0].id, 

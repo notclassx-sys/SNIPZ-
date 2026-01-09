@@ -108,9 +108,12 @@ const TaskBoard: React.FC<{ mode: 'ALL' | 'MY', user: User }> = ({ mode, user })
 
   const handleComplete = async (id: string) => {
     (window as any).haptic?.('heavy');
-    const success = await db.completeTask(id, user.id);
-    if (success) loadData();
-    else alert("Failed to complete task. Check connection.");
+    const result = await db.completeTask(id, user.id);
+    if (result.data) {
+      loadData();
+    } else {
+      alert(`COMPLETION ERROR: ${result.error}\n\nThis usually means you need to run the SQL fix in your Supabase editor.`);
+    }
   };
 
   const handlePush = async (taskId: string, targetMemberId: string) => {
