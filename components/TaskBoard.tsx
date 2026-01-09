@@ -102,7 +102,26 @@ const TaskBoard: React.FC<{ mode: 'ALL' | 'MY', user: User }> = ({ mode, user })
       db.getTasks(user.roomId),
       db.getRoomMembers(user.roomId)
     ]);
-    setTasks(mode === 'MY' ? allTasks.filter(t => t.assignedToId === user.id) : allTasks);
+    
+    // Cleanup Logic: Hide completed tasks after 3 hours
+    const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+    const now = Date.now();
+    
+    const filteredTasks = allTasks.filter(t => {
+      // 1. Check mode (All vs My Tasks)
+      const matchesMode = mode === 'MY' ? t.assignedToId === user.id : true;
+      if (!matchesMode) return false;
+      
+      // 2. Check Auto-Delete Rule (3 Hours)
+      if (t.status === 'COMPLETED' && t.completedAt) {
+        const timeSinceCompletion = now - t.completedAt;
+        if (timeSinceCompletion > THREE_HOURS_MS) return false;
+      }
+      
+      return true;
+    });
+
+    setTasks(filteredTasks);
     setMembers(roomMembers);
   };
 

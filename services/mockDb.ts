@@ -275,7 +275,8 @@ class DbService {
       
       if (task && user) {
         const { error: patchError } = await supabase.from('tasks').update({ 
-          status: 'COMPLETED'
+          status: 'COMPLETED',
+          completed_at: toDbTime()
         }).eq('id', taskId);
 
         if (patchError) {
@@ -307,7 +308,8 @@ class DbService {
         id: d.id, roomId: d.room_id, name: d.name, description: d.description, deadline: d.deadline,
         assignedToId: d.assigned_to_id, assignedToName: d.assigned_to_name,
         createdById: d.created_by_id, createdByName: d.created_by_name, status: d.status,
-        createdAt: parseTimestamp(d.created_at)
+        createdAt: parseTimestamp(d.created_at),
+        completedAt: d.completed_at ? parseTimestamp(d.completed_at) : undefined
       }));
     } catch (e) {
       return [];
@@ -321,7 +323,7 @@ class DbService {
       if (error || !data) return [];
       return data.map((d: any) => ({
         id: d.id, taskId: d.task_id, taskName: d.task_name, roomId: d.room_id,
-        fromUserId: d.from_user_id, from_user_name: d.from_user_name,
+        fromUserId: d.from_user_id, fromUserName: d.from_user_name,
         toUserId: d.to_user_id, toUserName: d.to_user_name, action: d.action,
         timestamp: parseTimestamp(d.timestamp || d.created_at)
       })).sort((a: any, b: any) => b.timestamp - a.timestamp);
