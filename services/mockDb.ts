@@ -7,23 +7,14 @@ export interface DbResult<T> {
   error?: string;
 }
 
-/**
- * Utility to ensure we always have a valid numeric timestamp for the UI
- */
 const parseTimestamp = (val: any): number => {
   if (!val) return Date.now();
   if (typeof val === 'number') return Math.floor(val);
-  // Handle numeric strings (bigint from Postgres often comes as string in JS)
   if (typeof val === 'string' && /^\d+$/.test(val)) return parseInt(val, 10);
-  // Handle ISO strings just in case some old data exists
   const parsed = new Date(val).getTime();
   return isNaN(parsed) ? Date.now() : Math.floor(parsed);
 };
 
-/**
- * Utility to format dates for Supabase BigInt consumption (Numeric Epoch)
- * Returns a clean integer to satisfy Postgres BIGINT columns.
- */
 const toDbTime = (): number => Math.floor(Date.now());
 
 class DbService {
@@ -147,6 +138,47 @@ class DbService {
     return { id: data.id, name: data.name, adminId: data.admin_id, inviteCode: data.invite_code };
   }
 
+  async getJoinedRooms(userId: string): Promise<Room[]> {
+    try {
+      const { data, error } = await supabase
+        .from('room_members')
+        .select(`
+          room_id,
+          rooms (*)
+        `)
+        .eq('user_id', userId);
+      
+      if (error || !data) return [];
+      return data.map((d: any) => ({
+        id: d.rooms.id,
+        name: d.rooms.name,
+        adminId: d.rooms.admin_id,
+        inviteCode: d.rooms.invite_code
+      }));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async switchRoom(roomId: string, user: User): Promise<boolean> {
+    try {
+      const { data: membership } = await supabase
+        .from('room_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('room_id', roomId)
+        .maybeSingle();
+      
+      if (!membership) return false;
+
+      const updatedUser = { ...user, roomId, role: membership.role as UserRole };
+      await this.setCurrentUser(updatedUser);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   async createRoom(name: string, admin: User): Promise<Room | null> {
     try {
       const roomPayload = { name, admin_id: admin.id, invite_code: Math.random().toString(36).substr(2, 6).toUpperCase() };
@@ -154,6 +186,14 @@ class DbService {
       if (error || !data?.[0]) return null;
 
       const newRoom: Room = { id: data[0].id, name: data[0].name, adminId: data[0].admin_id, inviteCode: data[0].invite_code };
+      
+      // Register membership
+      await supabase.from('room_members').insert({
+        user_id: admin.id,
+        room_id: newRoom.id,
+        role: 'ADMIN'
+      });
+
       if (this.currentUser) {
         this.currentUser.roomId = newRoom.id;
         this.currentUser.role = 'ADMIN';
@@ -169,6 +209,13 @@ class DbService {
     try {
       const { data: room, error } = await supabase.from('rooms').select('*').eq('invite_code', inviteCode.toUpperCase()).maybeSingle();
       if (error || !room) return null;
+
+      // Register membership
+      await supabase.from('room_members').upsert({
+        user_id: user.id,
+        room_id: room.id,
+        role: 'MEMBER'
+      });
 
       if (this.currentUser) {
         this.currentUser.roomId = room.id;
@@ -218,11 +265,7 @@ class DbService {
         .insert([payload])
         .select();
         
-      if (error) {
-        console.error('Task Insert Error:', error);
-        return { data: null, error: error.message };
-      }
-      
+      if (error) return { data: null, error: error.message };
       if (!data?.[0]) return { data: null, error: "No data returned." };
 
       const task: Task = { 
@@ -279,10 +322,7 @@ class DbService {
           completed_at: toDbTime()
         }).eq('id', taskId);
 
-        if (patchError) {
-          console.error('Complete Task DB Error:', patchError);
-          return { data: false, error: patchError.message };
-        }
+        if (patchError) return { data: false, error: patchError.message };
 
         await this.addLog({
           taskId: task.id, taskName: task.name, roomId: task.room_id,
@@ -340,7 +380,7 @@ class DbService {
         sender_id: senderId, 
         sender_name: senderName, 
         text: text || null,
-        timestamp: msgTime // Numeric BIGINT
+        timestamp: msgTime
       };
 
       if (audioData) {
@@ -350,14 +390,8 @@ class DbService {
         payload.type = 'text';
       }
       
-      // LOG TO CONSOLE TO VERIFY TYPE IN BROWSER
-      console.log('Sending message payload:', payload);
-
       const { data, error } = await supabase.from('messages').insert([payload]).select();
-      if (error) {
-        console.error('Chat Insert Error:', error);
-        return { data: null, error: error.message };
-      }
+      if (error) return { data: null, error: error.message };
       if (!data?.[0]) return { data: null, error: "No data returned" };
       
       const msg: Message = { 

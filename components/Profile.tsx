@@ -6,30 +6,48 @@ import { db } from '../services/mockDb';
 interface ProfileProps {
   user: User;
   onLogout: () => void;
+  onSwitchRoom: () => void;
+  onAddRoom: () => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
-  const [room, setRoom] = useState<Room | null>(null);
+const Profile: React.FC<ProfileProps> = ({ user, onLogout, onSwitchRoom, onAddRoom }) => {
+  const [activeRoom, setActiveRoom] = useState<Room | null>(null);
+  const [allRooms, setAllRooms] = useState<Room[]>([]);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRoom = async () => {
-      if (user.roomId) {
-        const roomData = await db.getRoom(user.roomId);
-        setRoom(roomData);
-      }
-      setLoading(false);
-    };
-    fetchRoom();
-  }, [user.roomId]);
+    fetchData();
+  }, [user.id, user.roomId]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [roomData, memberships] = await Promise.all([
+      user.roomId ? db.getRoom(user.roomId) : Promise.resolve(null),
+      db.getJoinedRooms(user.id)
+    ]);
+    setActiveRoom(roomData);
+    setAllRooms(memberships);
+    setLoading(false);
+  };
 
   const copyInviteCode = () => {
-    if (room) {
-      navigator.clipboard.writeText(room.inviteCode);
+    if (activeRoom) {
+      navigator.clipboard.writeText(activeRoom.inviteCode);
       setCopied(true);
       (window as any).haptic?.('light');
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleSwitch = async (roomId: string) => {
+    if (roomId === user.roomId) return;
+    (window as any).haptic?.('heavy');
+    const success = await db.switchRoom(roomId, user);
+    if (success) {
+      onSwitchRoom();
+    } else {
+      alert("Could not switch room.");
     }
   };
 
@@ -53,26 +71,62 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
           <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">{user.name}</h2>
           <p className="text-slate-400 font-bold text-sm tracking-wide mt-1">{user.email}</p>
         </div>
-        <div className="mt-4 inline-flex items-center px-4 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-full uppercase tracking-widest border border-emerald-100">
-          <i className="fas fa-shield-halved mr-2"></i>
-          {user.role} ACCESS LEVEL
-        </div>
       </div>
 
-      <div className="m3-card p-8 border border-slate-50">
-        <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-6">Workspace Intel</h3>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-slate-300 uppercase">Current Workspace</span>
-            <span className="font-extrabold text-xl text-slate-800">
-              {loading ? 'Verifying...' : (room?.name || 'No Room Assigned')}
-            </span>
+      <section className="space-y-4">
+        <div className="flex justify-between items-end px-1">
+          <div>
+            <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">My Workspaces</h3>
+            <p className="text-slate-900 font-black text-lg">Active Sessions</p>
           </div>
-          {room && (
-            <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
+          <button 
+            onClick={onAddRoom}
+            className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+          >
+            <i className="fas fa-plus"></i>
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {allRooms.map((r) => (
+            <button 
+              key={r.id} 
+              onClick={() => handleSwitch(r.id)}
+              className={`w-full m3-card p-5 flex items-center justify-between border-2 transition-all ${
+                r.id === user.roomId 
+                ? 'border-emerald-500 bg-emerald-50/30' 
+                : 'border-transparent bg-white hover:border-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${
+                  r.id === user.roomId ? 'bg-emerald-500 text-white' : 'bg-slate-50 text-slate-400'
+                }`}>
+                  <i className="fas fa-shapes"></i>
+                </div>
+                <div className="text-left">
+                  <span className="block font-black text-slate-800 leading-tight">{r.name}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {r.id === user.roomId ? 'Currently Operational' : 'Offline Access'}
+                  </span>
+                </div>
+              </div>
+              {r.id === user.roomId && (
+                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+              )}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {activeRoom && (
+        <div className="m3-card p-8 border border-slate-50">
+          <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-6">Current Space Intel</h3>
+          <div className="space-y-6">
+            <div className="pt-2 flex items-center justify-between">
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-black text-slate-300 uppercase">Access Code</span>
-                <span className="font-mono text-2xl font-black text-emerald-500 tracking-widest">{room.inviteCode}</span>
+                <span className="text-[10px] font-black text-slate-300 uppercase">Access Key</span>
+                <span className="font-mono text-2xl font-black text-emerald-500 tracking-widest">{activeRoom.inviteCode}</span>
               </div>
               <button 
                 onClick={copyInviteCode}
@@ -83,37 +137,26 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
                 <i className={`fas ${copied ? 'fa-check' : 'fa-copy'} text-lg`}></i>
               </button>
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {[
-          { icon: 'fa-gear', label: 'System Preferences' },
-          { icon: 'fa-user-lock', label: 'Privacy & Permissions' },
-        ].map((item, i) => (
-          <button key={i} className="m3-card w-full flex items-center justify-between p-5 group">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
-                 <i className={`fas ${item.icon}`}></i>
-              </div>
-              <span className="font-bold text-slate-700">{item.label}</span>
+            <div className="pt-6 border-t border-slate-50 inline-flex items-center text-emerald-600 text-[10px] font-black rounded-full uppercase tracking-widest">
+              <i className="fas fa-shield-halved mr-2 text-sm"></i>
+              {user.role} PERMISSIONS ACTIVE
             </div>
-            <i className="fas fa-chevron-right text-slate-200 text-xs"></i>
-          </button>
-        ))}
-        
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3 pt-4">
         <button 
           onClick={onLogout}
-          className="w-full flex items-center justify-center gap-3 p-6 bg-rose-50 text-rose-500 rounded-[2.2rem] font-black hover:bg-rose-500 hover:text-white transition-all mt-8 uppercase tracking-widest text-[11px]"
+          className="w-full flex items-center justify-center gap-3 p-6 bg-rose-50 text-rose-500 rounded-[2.2rem] font-black hover:bg-rose-500 hover:text-white transition-all mt-4 uppercase tracking-widest text-[11px]"
         >
           <i className="fas fa-power-off"></i>
-          Disconnect Session
+          Close all sessions
         </button>
       </div>
 
       <div className="text-center text-[9px] font-black text-slate-200 uppercase tracking-[0.4em] pb-12">
-        SNIPX LIBRARY • ARCH 1.5 • 2025
+        SNIPX PLATFORM • CORE 2.0 • 2025
       </div>
     </div>
   );

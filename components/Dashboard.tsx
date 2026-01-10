@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Task, TaskLog } from '../types';
 import { db } from '../services/mockDb';
-import { getTeamActivitySummary } from '../services/geminiService';
 
 const formatTimeAgo = (timestamp: number) => {
   const diff = Date.now() - timestamp;
@@ -33,10 +32,22 @@ const Dashboard: React.FC<{ user: User }> = ({ user }) => {
       db.getRoomMembers(user.roomId)
     ]);
     
+    const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    // Filter tasks for "Live" stats (Pending + Completed within 3h)
+    const liveTasks = allTasks.filter(t => {
+      if (t.status === 'PENDING') return true;
+      if (t.status === 'COMPLETED' && t.completedAt) {
+        return (now - t.completedAt) < THREE_HOURS_MS;
+      }
+      return false;
+    });
+    
     setStats({
-      total: allTasks.length,
-      completed: allTasks.filter(t => t.status === 'COMPLETED').length,
-      pending: allTasks.filter(t => t.status === 'PENDING').length,
+      total: liveTasks.length,
+      completed: liveTasks.filter(t => t.status === 'COMPLETED').length,
+      pending: liveTasks.filter(t => t.status === 'PENDING').length,
       activeMembers: roomMembers.length
     });
     setLogs(roomLogs);
@@ -47,15 +58,14 @@ const Dashboard: React.FC<{ user: User }> = ({ user }) => {
     <div className="space-y-8 pb-10">
       <div className="px-1">
         <h2 className="text-3xl font-black text-slate-900 tracking-tight">Ops Center</h2>
-        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Real-time metrics</p>
+        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Active Room Metrics</p>
       </div>
 
-      {/* STAT GRID - RESILIENT 2x2 */}
       <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
         {[
-          { label: 'Total', value: stats.total, color: '#10b981', icon: 'fa-cubes' },
+          { label: 'Live', value: stats.total, color: '#10b981', icon: 'fa-cubes' },
           { label: 'Done', value: stats.completed, color: '#3b82f6', icon: 'fa-check' },
-          { label: 'Wait', value: stats.pending, color: '#f59e0b', icon: 'fa-clock' },
+          { label: 'Pending', value: stats.pending, color: '#f59e0b', icon: 'fa-clock' },
           { label: 'Team', value: stats.activeMembers, color: '#6366f1', icon: 'fa-users' },
         ].map((stat, i) => (
           <div key={i} className="m3-card" style={{ textAlign: 'center', background: 'white', borderRadius: '24px', padding: '16px', border: '1px solid rgba(0,0,0,0.05)' }}>
@@ -72,7 +82,6 @@ const Dashboard: React.FC<{ user: User }> = ({ user }) => {
         ))}
       </div>
 
-      {/* MOVEMENT LOGS */}
       <section>
         <h3 className="text-xl font-black text-slate-900 mb-4 px-1 flex items-center gap-2">
           <i className="fas fa-bolt text-emerald-500 text-sm"></i> Movement
@@ -88,23 +97,16 @@ const Dashboard: React.FC<{ user: User }> = ({ user }) => {
                   {log.fromUserName} <span style={{ color: '#94a3b8', fontSize: '9px', textTransform: 'uppercase' }}>{log.action}</span> <span className="text-emerald-600">"{log.taskName}"</span>
                 </div>
                 <div style={{ fontSize: '8px', fontWeight: '900', color: '#cbd5e1', textTransform: 'uppercase', marginTop: '2px' }}>
-                  {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {formatTimeAgo(log.timestamp)}
                 </div>
               </div>
             </div>
           ))}
-          {logs.length === 0 && (
-            <div className="p-10 text-center opacity-20">
-              <i className="fas fa-wind text-4xl mb-2"></i>
-              <p className="text-xs font-black uppercase">No recent activity</p>
-            </div>
-          )}
         </div>
       </section>
 
-      {/* RESTORED TEAM STATUS (ACTIVITY BAR) */}
       <section>
-        <h3 className="text-xl font-black text-slate-900 mb-4 px-1">Team Status</h3>
+        <h3 className="text-xl font-black text-slate-900 mb-4 px-1">Team Presence</h3>
         <div className="grid grid-cols-1 gap-3">
           {members.map((m) => (
             <div key={m.id} className="m3-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'between', background: 'white', borderRadius: '24px', padding: '16px', border: '1px solid rgba(0,0,0,0.05)' }}>
@@ -125,7 +127,7 @@ const Dashboard: React.FC<{ user: User }> = ({ user }) => {
                   <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {m.name} {m.id === user.id ? '(You)' : ''}
                   </div>
-                  <div style={{ fontSize: '9px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', tracking: '0.05em' }}>
+                  <div style={{ fontSize: '9px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase' }}>
                     {m.role}
                   </div>
                 </div>
