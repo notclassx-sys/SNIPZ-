@@ -379,7 +379,8 @@ class DbService {
         room_id: roomId, 
         sender_id: senderId, 
         sender_name: senderName, 
-        text: text || null,
+        // FIX: Ensure text is never null to satisfy NOT NULL constraints in Supabase
+        text: text || "",
         timestamp: msgTime
       };
 
