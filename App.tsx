@@ -109,7 +109,7 @@ const App: React.FC = () => {
           <div className="w-20 h-20 bg-green-500 rounded-[2rem] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-green-100 rotate-3 transition-transform hover:rotate-0 duration-500">
             <i className="fas fa-cubes text-4xl text-white"></i>
           </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-1 tracking-tight uppercase">SNIPX LIBRARY</h1>
+          <h1 className="text-3xl font-black text-slate-900 mb-1 tracking-tight uppercase">TEAMS</h1>
           <p className="text-slate-400 font-bold text-sm">Secure Platform Workspace</p>
         </div>
         

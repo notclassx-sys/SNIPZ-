@@ -36,10 +36,10 @@ const RoomManager: React.FC<RoomManagerProps> = ({ user, onUpdate }) => {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-6 animate-fade-up">
-      <div className="w-full max-w-md">
+      <div className="w-full max-md">
         <div className="text-center mb-12 animate-scale-in">
           <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Setup Space</h2>
-          <p className="text-slate-400 font-medium">Create or join your library team</p>
+          <p className="text-slate-400 font-medium">Create or join your team</p>
         </div>
 
         {view === 'CHOICE' && (

@@ -31,8 +31,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
             <i className="fas fa-shapes text-white"></i>
           </div>
           <div className="flex flex-col">
-            <span className="font-extrabold tracking-tight text-slate-900 text-lg leading-tight">SNIPX</span>
-            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Library Cloud</span>
+            <span className="font-extrabold tracking-tight text-slate-900 text-lg leading-tight">TEAMS</span>
+            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Workspace Cloud</span>
           </div>
         </div>
         <div className="flex items-center gap-2">

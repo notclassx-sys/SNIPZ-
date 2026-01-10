@@ -156,7 +156,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout, onSwitchRoom, onAddRo
       </div>
 
       <div className="text-center text-[9px] font-black text-slate-200 uppercase tracking-[0.4em] pb-12">
-        SNIPX PLATFORM • CORE 2.0 • 2025
+        TEAMS PLATFORM • CORE 2.0 • 2025
       </div>
     </div>
   );
