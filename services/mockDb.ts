@@ -428,13 +428,41 @@ class DbService {
     try {
       await supabase.from('task_logs').insert([{
         task_id: log.taskId, task_name: log.taskName, room_id: log.roomId,
-        from_user_id: log.fromUserId, from_user_name: log.fromUserName,
+        from__user_id: log.fromUserId, from_user_name: log.fromUserName,
         to_user_id: log.toUserId, to_user_name: log.toUserName,
         action: log.action,
         timestamp: toDbTime()
       }]);
     } catch (e) {
       console.error('Logging failed:', e);
+    }
+  }
+
+  // Fix: Added findUserByEmail to satisfy requirement in App.tsx
+  async findUserByEmail(email: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data.id;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Fix: Added updatePassword to satisfy requirement in App.tsx
+  async updatePassword(userId: string, newPassword: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ password: newPassword })
+        .eq('id', userId);
+      return !error;
+    } catch (e) {
+      return false;
     }
   }
 
