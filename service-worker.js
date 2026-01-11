@@ -1,6 +1,6 @@
 
-const CACHE_NAME = 'teams-v3';
-const ASSETS = [
+const CACHE_NAME = 'teams-v4';
+const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
@@ -8,31 +8,57 @@ const ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
+// Install Event
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('Caching essential assets');
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
   );
+  self.skipWaiting();
 });
 
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
+          }
+        })
       );
     })
   );
   self.clients.claim();
 });
 
+// Fetch Event - Network First with Cache Fallback (Reliable PWA Detection)
 self.addEventListener('fetch', (event) => {
-  // Satisfy Google's PWA criteria for Bubblewrap
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    }).catch(() => {
-       return caches.match('/');
-    })
+    fetch(event.request)
+      .then((response) => {
+        // If successful, clone and store in cache
+        const resClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, resClone);
+        });
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try cache
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          // If both fail and it's a navigation request, return index.html
+          if (event.request.mode === 'navigate') {
+            return caches.match('/');
+          }
+        });
+      })
   );
 });

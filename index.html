@@ -10,9 +10,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   
-  <!-- Manifest (Absolute path for Bubblewrap stability) -->
+  <link rel="icon" type="image/png" href="https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=10b981">
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=Teams&backgroundColor=10b981">
+  <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=10b981">
   
   <title>TEAMS Workspace</title>
   
@@ -32,7 +32,7 @@
       color: #0f172a;
       overflow-x: hidden;
       -webkit-tap-highlight-color: transparent;
-      overscroll-behavior-y: contain; /* Prevents pull-to-refresh feel in APK */
+      overscroll-behavior-y: contain;
     }
     
     @keyframes springUp {
@@ -104,9 +104,9 @@
     
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-          .then(reg => console.log('TWA Service Worker Ready'))
-          .catch(err => console.error('TWA SW Failure', err));
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => console.log('Service Worker Registered with scope:', reg.scope))
+          .catch(err => console.error('Service Worker Registration Failed:', err));
       });
     }
 
