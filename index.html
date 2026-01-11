@@ -99,7 +99,6 @@
     }
     .input-m3:focus { border-color: var(--primary); background: white; outline: none; }
 
-    /* Custom Toast Style */
     .toast-container {
       position: fixed;
       top: calc(var(--safe-top) + 16px);
@@ -142,8 +141,8 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-          .then(reg => console.log('[PWA] Service Worker Registered:', reg.scope))
-          .catch(err => console.error('[PWA] Registration Failed:', err));
+          .then(reg => console.log('[PWA] Operational'))
+          .catch(err => console.error('[PWA] Fail:', err));
       });
     }
 
