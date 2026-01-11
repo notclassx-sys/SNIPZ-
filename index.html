@@ -7,11 +7,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#10b981">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   
-  <!-- Manifest (Relative path ./ to ensure it is found in the root) -->
-  <link rel="manifest" href="./manifest.json">
+  <!-- Manifest (Path must be exactly /manifest.json for most build tools) -->
+  <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=Teams&backgroundColor=10b981">
   
   <title>TEAMS</title>
@@ -101,12 +101,12 @@
   <script>
     window.process = { env: { API_KEY: '' } };
     
-    // Service Worker Registration for PWA / App capability
+    // Improved Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js')
-          .then(reg => console.log('SW Registered', reg))
-          .catch(err => console.log('SW Failed', err));
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+          .then(reg => console.log('PWA Ready', reg))
+          .catch(err => console.error('PWA Setup Failed', err));
       });
     }
 
