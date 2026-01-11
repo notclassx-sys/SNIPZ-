@@ -94,7 +94,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
         <div className="animate-spring">
-          <div className="w-20 h-20 bg-emerald-500 rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-emerald-200 animate-float">
+          <div className="w-20 h-20 bg-brand rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-indigo-200 animate-float">
              <i className="fas fa-cubes text-white text-3xl"></i>
           </div>
         </div>
@@ -107,7 +107,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#fdfdfd] flex flex-col items-center justify-center p-6 text-center animate-spring">
         <div className="mb-12">
-          <div className="w-24 h-24 bg-emerald-500 rounded-[2.8rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-200 rotate-6 transition-transform hover:rotate-0 duration-500 cursor-pointer">
+          <div className="w-24 h-24 bg-brand rounded-[2.8rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-200 rotate-6 transition-transform hover:rotate-0 duration-500 cursor-pointer">
             <i className="fas fa-shapes text-5xl text-white"></i>
           </div>
           <h1 className="text-4xl font-black text-slate-900 mb-1 tracking-tight">TEAMS</h1>
@@ -116,8 +116,8 @@ const App: React.FC = () => {
 
         <div className="w-full max-w-sm bg-white border border-slate-100 p-8 rounded-[3.5rem] shadow-2xl shadow-slate-200/40 space-y-6 animate-spring stagger-1">
           <div className="flex bg-slate-50 p-1.5 rounded-2xl">
-            <button onClick={() => setAuthMode('LOGIN')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${authMode === 'LOGIN' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}>LOGIN</button>
-            <button onClick={() => setAuthMode('SIGN_UP')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${authMode === 'SIGN_UP' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}>JOIN</button>
+            <button onClick={() => setAuthMode('LOGIN')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${authMode === 'LOGIN' ? 'bg-white shadow-sm text-brand' : 'text-slate-400'}`}>LOGIN</button>
+            <button onClick={() => setAuthMode('SIGN_UP')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${authMode === 'SIGN_UP' ? 'bg-white shadow-sm text-brand' : 'text-slate-400'}`}>JOIN</button>
           </div>
           
           <div className="space-y-4 text-left">
@@ -138,15 +138,15 @@ const App: React.FC = () => {
                 <input type="password" placeholder="Password" className="w-full input-m3" value={password} onChange={(e) => setPassword(e.target.value)} />
                 
                 {authMode === 'LOGIN' && (
-                  <button onClick={() => setAuthMode('FORGOT')} className="text-[9px] font-black text-emerald-600 uppercase mt-3 ml-2 hover:underline">Forgot Key?</button>
+                  <button onClick={() => setAuthMode('FORGOT')} className="text-[9px] font-black text-brand uppercase mt-3 ml-2 hover:underline">Forgot Key?</button>
                 )}
 
                 {authError && <p className="text-[10px] font-black uppercase text-center mt-4 text-rose-500">{authError}</p>}
                 
                 {authMode === 'SIGN_UP' && (
-                  <div className="flex items-center gap-3 p-5 bg-emerald-50/50 rounded-3xl mt-4 border border-emerald-100">
-                    <input type="checkbox" id="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="w-6 h-6 accent-emerald-500 rounded-lg cursor-pointer" />
-                    <label htmlFor="terms" className="text-[11px] text-emerald-800 font-bold leading-none cursor-pointer">I'll be a cool team player 🤝</label>
+                  <div className="flex items-center gap-3 p-5 bg-indigo-50/50 rounded-3xl mt-4 border border-indigo-100">
+                    <input type="checkbox" id="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="w-6 h-6 accent-brand rounded-lg cursor-pointer" />
+                    <label htmlFor="terms" className="text-[11px] text-brand font-bold leading-none cursor-pointer">I'll be a cool team player 🤝</label>
                   </div>
                 )}
                 <button onClick={handleAuth} className="btn-primary w-full py-6 text-sm tracking-widest uppercase mt-6">{isProcessing ? 'Verifying...' : authMode === 'LOGIN' ? 'Access Hub' : 'Register Now'}</button>

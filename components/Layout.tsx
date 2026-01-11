@@ -26,12 +26,12 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
     <div className="flex flex-col min-h-screen bg-[#f8fafc]">
       <header className="fixed top-0 left-0 right-0 z-[1000] bg-white/80 backdrop-blur-3xl px-6 flex justify-between items-center border-b border-slate-100 h-24">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-100">
+          <div className="w-12 h-12 bg-brand rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-100">
             <i className="fas fa-shapes text-white text-xl"></i>
           </div>
           <div>
             <h1 className="font-black text-xl text-slate-900 tracking-tight leading-none">TEAMS</h1>
-            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-1">Operational</p>
+            <p className="text-[10px] font-black text-brand uppercase tracking-widest mt-1">Operational</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -51,11 +51,11 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
             key={tab.id}
             onClick={() => handleTabClick(tab.id)}
             className={`relative flex flex-col items-center justify-center flex-1 transition-all h-16 ${
-              activeTab === tab.id ? 'text-emerald-500 scale-110' : 'text-slate-400'
+              activeTab === tab.id ? 'text-brand scale-110' : 'text-slate-400'
             }`}
           >
             <div className={`w-12 h-10 rounded-2xl flex items-center justify-center transition-all ${
-              activeTab === tab.id ? 'bg-emerald-50' : 'bg-transparent'
+              activeTab === tab.id ? 'bg-indigo-50' : 'bg-transparent'
             }`}>
               <i className={`fa-solid ${tab.icon} ${activeTab === tab.id ? 'text-lg' : 'text-base'}`}></i>
             </div>
@@ -65,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
               {tab.label}
             </span>
             {activeTab === tab.id && (
-              <div className="absolute -bottom-1 w-1 h-1 bg-emerald-500 rounded-full"></div>
+              <div className="absolute -bottom-1 w-1 h-1 bg-brand rounded-full"></div>
             )}
           </button>
         ))}
