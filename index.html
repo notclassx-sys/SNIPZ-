@@ -10,11 +10,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   
-  <!-- Main Manifest -->
-  <link rel="manifest" href="manifest.json">
-  <!-- Backup for the typo in your screenshot -->
-  <link rel="alternate-manifest" href="mainfest.json">
-  
+  <!-- Manifest (Relative path ./ to ensure it is found in the root) -->
+  <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=Teams&backgroundColor=10b981">
   
   <title>TEAMS</title>
@@ -37,7 +34,6 @@
       -webkit-tap-highlight-color: transparent;
     }
     
-    /* Advanced Animations */
     @keyframes springUp {
       0% { opacity: 0; transform: translateY(30px) scale(0.9); }
       70% { transform: translateY(-5px) scale(1.02); }
@@ -47,19 +43,9 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-10px); }
     }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(20px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
     
     .animate-spring { animation: springUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
     .animate-float { animation: float 3s ease-in-out infinite; }
-    .animate-slide { animation: slideIn 0.4s ease-out forwards; }
-
-    /* Staggered Delay Helpers */
-    .stagger-1 { animation-delay: 0.1s; }
-    .stagger-2 { animation-delay: 0.2s; }
-    .stagger-3 { animation-delay: 0.3s; }
 
     .m3-card {
       background: white;
@@ -69,8 +55,6 @@
       box-shadow: 0 10px 40px -10px rgba(0,0,0,0.03);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .m3-card:hover { transform: translateY(-4px); box-shadow: 0 20px 50px -12px rgba(16, 185, 129, 0.1); }
-    .m3-card:active { transform: scale(0.97); }
 
     header {
       position: fixed; top: 0; left: 0; right: 0;
@@ -97,9 +81,7 @@
       border-radius: 24px;
       font-weight: 800;
       box-shadow: 0 12px 24px -8px rgba(16, 185, 129, 0.5);
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .btn-primary:active { transform: scale(0.94); }
     
     .input-m3 {
       background: #f1f5f9;
@@ -109,11 +91,7 @@
       font-weight: 700;
       transition: all 0.3s ease;
     }
-    .input-m3:focus { border-color: var(--primary); background: white; outline: none; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
-
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    .input-m3:focus { border-color: var(--primary); background: white; outline: none; }
   </style>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -122,6 +100,16 @@
   
   <script>
     window.process = { env: { API_KEY: '' } };
+    
+    // Service Worker Registration for PWA / App capability
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(reg => console.log('SW Registered', reg))
+          .catch(err => console.log('SW Failed', err));
+      });
+    }
+
     window.haptic = (type = 'light') => {
       if ('vibrate' in navigator) {
         const patterns = { light: 10, medium: 30, heavy: 60 };

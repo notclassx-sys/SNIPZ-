@@ -2,8 +2,8 @@
 {
   "name": "TEAMS Workspace",
   "short_name": "TEAMS",
-  "description": "Real-time team collaboration and task management hub.",
-  "start_url": "/",
+  "description": "Real-time team collaboration hub.",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#10b981",
