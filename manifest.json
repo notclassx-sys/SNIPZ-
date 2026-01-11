@@ -9,25 +9,34 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "minimal-ui",
+    "standalone"
+  ],
   "background_color": "#ffffff",
   "theme_color": "#3b33ff",
   "orientation": "portrait",
-  "categories": ["productivity", "business", "communication"],
+  "categories": [
+    "productivity",
+    "business",
+    "communication"
+  ],
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/initials/png?seed=TW&backgroundColor=3b33ff&width=192&height=192&ext=.png",
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=192&height=192",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://api.dicebear.com/7.x/initials/png?seed=TW&backgroundColor=3b33ff&width=512&height=512&ext=.png",
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=512&height=512",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://api.dicebear.com/7.x/initials/png?seed=TW&backgroundColor=3b33ff&width=512&height=512&ext=.png",
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=512&height=512",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -53,8 +62,42 @@
     {
       "name": "My Scope",
       "url": "/?tab=MY_TASKS",
-      "icons": [{ "src": "https://api.dicebear.com/7.x/initials/png?seed=TW&backgroundColor=3b33ff&width=192&height=192&ext=.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=192&height=192",
+          "sizes": "192x192"
+        }
+      ]
     }
   ],
-  "prefer_related_applications": false
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "iarc_rating_id": "e8498616-291d-4043-85e6-4299863c3214",
+  "scope_extensions": [
+    {
+      "origin": "https://snipz-xi.vercel.app"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "text/plain": [
+          ".txt"
+        ],
+        "application/pdf": [
+          ".pdf"
+        ],
+        "image/*": [
+          ".png",
+          ".jpg",
+          ".jpeg"
+        ]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "handle_links": "auto"
 }
