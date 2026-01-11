@@ -1,18 +1,50 @@
 
 {
+  "id": "com.snipx.teams.v1",
   "name": "TEAMS Workspace",
   "short_name": "TEAMS",
-  "description": "Real-time team collaboration and task management hub.",
+  "description": "Premium real-time team collaboration hub for high-performance teams.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#10b981",
+  "theme_color": "#3b33ff",
   "orientation": "portrait",
+  "categories": ["productivity", "business", "communication"],
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=Teams&backgroundColor=10b981",
+      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://images.unsplash.com/photo-1611224923853-80b023f02d71?auto=format&fit=crop&q=80&w=1080&h=1920",
+      "sizes": "1080x1920",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Mobile Operations Center"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1920&h=1080",
+      "sizes": "1920x1080",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Desktop Workspace Dashboard"
     }
   ]
 }

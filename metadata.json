@@ -1,6 +1,6 @@
 {
-  "name": "TEAMS - Team Room & Task Management",
-  "description": "Android 15 Optimized team workspace featuring Material 3 design, edge-to-edge immersion, and real-time collaboration with haptic feedback.",
+  "name": "TEAMS Workspace",
+  "description": "Premium real-time team collaboration hub for high-performance teams. Built with Material 3 and optimized for Android 15.",
   "requestFramePermissions": [
     "camera",
     "microphone"

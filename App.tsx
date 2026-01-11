@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { User, TabType } from './types';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, TabType, TaskLog } from './types';
 import { db } from './services/mockDb';
 import RoomManager from './components/RoomManager';
 import Layout from './components/Layout';
@@ -24,15 +24,79 @@ const App: React.FC = () => {
   const [authError, setAuthError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showRoomSetup, setShowRoomSetup] = useState(false);
+  
+  // Notification State
+  const [activeToast, setActiveToast] = useState<{from: string, task: string, avatar: string} | null>(null);
+  const lastCheckRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const checkAuth = () => {
       const currentUser = db.getCurrentUser();
-      if (currentUser) setUser({ ...currentUser });
+      if (currentUser) {
+        setUser({ ...currentUser });
+        requestNotificationPermission();
+      }
       setTimeout(() => setLoading(false), 800);
     };
     checkAuth();
   }, []);
+
+  // Real-time Notification Engine
+  useEffect(() => {
+    if (!user?.id || !user?.roomId) return;
+
+    const pollNotifications = async () => {
+      try {
+        const logs = await db.getLogs(user.roomId!);
+        const newLogs = logs.filter(log => 
+          log.timestamp > lastCheckRef.current && 
+          log.toUserId === user.id && 
+          (log.action === 'PUSHED' || log.action === 'CREATED')
+        );
+
+        if (newLogs.length > 0) {
+          const latest = newLogs[0];
+          triggerNotification(latest);
+        }
+        
+        lastCheckRef.current = Date.now();
+      } catch (err) {
+        console.error("Notify sync error", err);
+      }
+    };
+
+    const interval = setInterval(pollNotifications, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const requestNotificationPermission = () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  };
+
+  const triggerNotification = (log: TaskLog) => {
+    // 1. Haptic Feedback
+    (window as any).haptic?.('heavy');
+
+    // 2. Browser Push
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification("New Task Assigned", {
+        body: `${log.fromUserName} assigned you: ${log.taskName}`,
+        icon: "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff"
+      });
+    }
+
+    // 3. In-App Toast
+    setActiveToast({
+      from: log.fromUserName,
+      task: log.taskName,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${log.fromUserName}`
+    });
+
+    // Auto-hide toast
+    setTimeout(() => setActiveToast(null), 5000);
+  };
 
   const handleAuth = async () => {
     setAuthError('');
@@ -54,7 +118,10 @@ const App: React.FC = () => {
         result = await db.login(email, password);
       }
 
-      if (result) setUser(result);
+      if (result) {
+        setUser(result);
+        requestNotificationPermission();
+      }
       else setAuthError("Auth failed. Check details.");
     } catch (e) {
       setAuthError("Sync error.");
@@ -159,22 +226,40 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-      <div className="animate-spring">
-        {activeTab === 'ALL_TASKS' && <TaskBoard mode="ALL" user={user} />}
-        {activeTab === 'MY_TASKS' && <TaskBoard mode="MY" user={user} />}
-        {activeTab === 'DASHBOARD' && <Dashboard user={user} />}
-        {activeTab === 'CHAT' && <Chat user={user} />}
-        {activeTab === 'PROFILE' && (
-          <Profile 
-            user={user} 
-            onLogout={() => { db.logout(); setUser(null); }} 
-            onSwitchRoom={() => setUser({...db.getCurrentUser()!})} 
-            onAddRoom={() => setShowRoomSetup(true)}
-          />
-        )}
-      </div>
-    </Layout>
+    <>
+      {activeToast && (
+        <div className="toast-container">
+          <div className="notification-toast animate-toast">
+            <img src={activeToast.avatar} className="w-10 h-10 rounded-xl bg-white/10" alt="" />
+            <div className="flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">New Scope Assigned</p>
+              <p className="text-sm font-bold truncate">"{activeToast.task}" from {activeToast.from}</p>
+            </div>
+            <button onClick={() => setActiveToast(null)} className="p-2 opacity-40"><i className="fas fa-times"></i></button>
+          </div>
+        </div>
+      )}
+
+      <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+        <div className="animate-spring">
+          {activeTab === 'ALL_TASKS' && <TaskBoard mode="ALL" user={user} />}
+          {activeTab === 'MY_TASKS' && <TaskBoard mode="MY" user={user} />}
+          {activeTab === 'DASHBOARD' && <Dashboard user={user} />}
+          {activeTab === 'CHAT' && <Chat user={user} />}
+          {activeTab === 'PROFILE' && (
+            <Profile 
+              user={user} 
+              onLogout={() => { db.logout(); setUser(null); }} 
+              onSwitchRoom={() => {
+                setUser({...db.getCurrentUser()!});
+                lastCheckRef.current = Date.now();
+              }} 
+              onAddRoom={() => setShowRoomSetup(true)}
+            />
+          )}
+        </div>
+      </Layout>
+    </>
   );
 };
 
