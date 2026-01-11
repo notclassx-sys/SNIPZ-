@@ -10,11 +10,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   
-  <!-- Manifest (Path must be exactly /manifest.json for most build tools) -->
+  <!-- Manifest (Absolute path for Bubblewrap stability) -->
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=Teams&backgroundColor=10b981">
   
-  <title>TEAMS</title>
+  <title>TEAMS Workspace</title>
   
   <style>
     @charset "UTF-8";
@@ -32,6 +32,7 @@
       color: #0f172a;
       overflow-x: hidden;
       -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: contain; /* Prevents pull-to-refresh feel in APK */
     }
     
     @keyframes springUp {
@@ -101,12 +102,11 @@
   <script>
     window.process = { env: { API_KEY: '' } };
     
-    // Improved Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-          .then(reg => console.log('PWA Ready', reg))
-          .catch(err => console.error('PWA Setup Failed', err));
+          .then(reg => console.log('TWA Service Worker Ready'))
+          .catch(err => console.error('TWA SW Failure', err));
       });
     }
 
