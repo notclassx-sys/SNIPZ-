@@ -11,13 +11,13 @@
   "theme_color": "#3b33ff",
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff",
+      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&size=192",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff",
+      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&size=512",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

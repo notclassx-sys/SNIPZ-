@@ -4,6 +4,8 @@
   "name": "TEAMS Workspace",
   "short_name": "TEAMS",
   "description": "Premium real-time team collaboration hub for high-performance teams.",
+  "lang": "en-US",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -13,19 +15,19 @@
   "categories": ["productivity", "business", "communication"],
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff",
+      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff&size=192",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff",
+      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff&size=512",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff",
+      "src": "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&shape1Color=ffffff&size=512",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -51,12 +53,13 @@
     {
       "name": "My Scope",
       "url": "/?tab=MY_TASKS",
-      "icons": [{ "src": "https://api.dicebear.com/7.x/shapes/png?seed=Tasks&backgroundColor=3b33ff", "sizes": "192x192" }]
+      "icons": [{ "src": "https://api.dicebear.com/7.x/shapes/png?seed=Tasks&backgroundColor=3b33ff&size=192", "sizes": "192x192" }]
     },
     {
       "name": "Live Chat",
       "url": "/?tab=CHAT",
-      "icons": [{ "src": "https://api.dicebear.com/7.x/shapes/png?seed=Chat&backgroundColor=3b33ff", "sizes": "192x192" }]
+      "icons": [{ "src": "https://api.dicebear.com/7.x/shapes/png?seed=Chat&backgroundColor=3b33ff&size=192", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }

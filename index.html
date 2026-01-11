@@ -10,9 +10,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   
-  <link rel="icon" type="image/png" href="https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff">
+  <link rel="icon" type="image/png" href="https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&size=192">
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff">
+  <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff&size=192">
   
   <title>TEAMS Workspace</title>
   
@@ -138,12 +138,21 @@
   <script>
     window.process = { env: { API_KEY: '' } };
     
+    // Register Service Worker early to ensure PWA detectors find it
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-          .then(reg => console.log('[PWA] Operational'))
-          .catch(err => console.error('[PWA] Fail:', err));
-      });
+      navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+        .then(reg => {
+          console.log('[PWA] Service Worker Registered Successfully');
+          reg.onupdatefound = () => {
+            const installingWorker = reg.installing;
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA] New content is available; please refresh.');
+              }
+            };
+          };
+        })
+        .catch(err => console.error('[PWA] Registration failed:', err));
     }
 
     window.haptic = (type = 'light') => {
