@@ -1,21 +1,19 @@
 
 {
-  "id": "com.snipx.teams.workspace.v1",
-  "name": "TEAMS Workspace",
-  "short_name": "TEAMS",
-  "description": "Premium real-time team collaboration hub for high-performance teams.",
+  "name": "TASK ROOM ",
+  "short_name": "TEAMS ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#3b33ff",
+  "theme_color": "#000000",
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=192&height=192",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=512&height=512",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
