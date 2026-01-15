@@ -18,6 +18,12 @@
   <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#000000">
   <title>TEAMS Workspace</title>
+  <script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
+</script>
+
   
   <style>
     @charset "UTF-8";
