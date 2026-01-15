@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.vercel.collagex_student",
+      "package_name": "app.vercel.snipz",
       "sha256_cert_fingerprints": [
         "EA:B4:F4:E8:8B:EB:00:6F:33:CE:1B:CE:7C:B1:28:C6:BD:5B:EF:19:3C:13:B7:38:D0:B1:4C:16:A7:0B:57:B0"
       ]
