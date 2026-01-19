@@ -25,7 +25,6 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showRoomSetup, setShowRoomSetup] = useState(false);
   
-  // Notification State
   const [activeToast, setActiveToast] = useState<{from: string, task: string, avatar: string} | null>(null);
   const lastCheckRef = useRef<number>(Date.now());
 
@@ -41,7 +40,20 @@ const App: React.FC = () => {
     checkAuth();
   }, []);
 
-  // Real-time Notification Engine
+  // REAL-TIME HEARTBEAT & PRESENCE
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Initial heartbeat
+    db.heartbeat(user.id, user.roomId);
+
+    const interval = setInterval(() => {
+      db.heartbeat(user.id, user.roomId);
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user?.id, user?.roomId]);
+
   useEffect(() => {
     if (!user?.id || !user?.roomId) return;
 
@@ -55,10 +67,8 @@ const App: React.FC = () => {
         );
 
         if (newLogs.length > 0) {
-          const latest = newLogs[0];
-          triggerNotification(latest);
+          triggerNotification(newLogs[0]);
         }
-        
         lastCheckRef.current = Date.now();
       } catch (err) {
         console.error("Notify sync error", err);
@@ -67,7 +77,7 @@ const App: React.FC = () => {
 
     const interval = setInterval(pollNotifications, 5000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user?.id, user?.roomId]);
 
   const requestNotificationPermission = () => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -76,32 +86,25 @@ const App: React.FC = () => {
   };
 
   const triggerNotification = (log: TaskLog) => {
-    // 1. Haptic Feedback
     (window as any).haptic?.('heavy');
-
-    // 2. Browser Push
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification("New Task Assigned", {
-        body: `${log.fromUserName} assigned you: ${log.taskName}`,
+        body: `${log.fromUserName} assigned: ${log.taskName}`,
         icon: "https://api.dicebear.com/7.x/shapes/png?seed=Teams&backgroundColor=3b33ff"
       });
     }
-
-    // 3. In-App Toast
     setActiveToast({
       from: log.fromUserName,
       task: log.taskName,
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${log.fromUserName}`
     });
-
-    // Auto-hide toast
     setTimeout(() => setActiveToast(null), 5000);
   };
 
   const handleAuth = async () => {
     setAuthError('');
     if (authMode === 'SIGN_UP' && (!name || !agreedToTerms)) {
-      setAuthError("Check all fields and agree to be cool.");
+      setAuthError("Name and terms are required.");
       return;
     }
     if (authMode !== 'FORGOT' && (!email || !password)) {
@@ -122,9 +125,9 @@ const App: React.FC = () => {
         setUser(result);
         requestNotificationPermission();
       }
-      else setAuthError("Auth failed. Check details.");
+      else setAuthError("Invalid credentials.");
     } catch (e) {
-      setAuthError("Sync error.");
+      setAuthError("Network error.");
     } finally {
       setIsProcessing(false);
     }
@@ -149,7 +152,7 @@ const App: React.FC = () => {
         const success = await db.updatePassword(recoveryUserId!, password);
         if (success) {
           setAuthMode('LOGIN');
-          setAuthError('Key updated! Login now.');
+          setAuthError('Password reset! Login now.');
           setRecoveryStep('EMAIL');
         }
       }
@@ -157,72 +160,80 @@ const App: React.FC = () => {
     setIsProcessing(false);
   };
 
+  const onRoomUpdated = () => {
+    const updatedUser = db.getCurrentUser();
+    setUser(updatedUser ? { ...updatedUser } : null);
+    setShowRoomSetup(false);
+    setActiveTab('DASHBOARD');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-        <div className="animate-spring">
-          <div className="w-20 h-20 bg-brand rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-indigo-200 animate-float">
-             <i className="fas fa-cubes text-white text-3xl"></i>
-          </div>
+        <div className="w-20 h-20 bg-brand rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-indigo-200 animate-pulse">
+          <i className="fas fa-cubes text-white text-3xl"></i>
         </div>
-        <p className="mt-8 text-slate-300 font-black text-[10px] tracking-[0.5em] uppercase">Initializing Hub</p>
+        <p className="mt-8 text-slate-300 font-black text-[10px] tracking-[0.5em] uppercase animate-pulse">Initializing</p>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#fdfdfd] flex flex-col items-center justify-center p-6 text-center animate-spring">
-        <div className="mb-12">
-          <div className="w-24 h-24 bg-brand rounded-[2.8rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-200 rotate-6 transition-transform hover:rotate-0 duration-500 cursor-pointer">
-            <i className="fas fa-shapes text-5xl text-white"></i>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center animate-fade">
+        <div className="mb-10 text-center">
+          <div className="w-20 h-20 bg-brand rounded-4xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-brand/20">
+            <i className="fas fa-shapes text-4xl text-white"></i>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 mb-1 tracking-tight">TEAMS</h1>
-          <p className="text-slate-400 font-bold text-sm tracking-widest uppercase opacity-60">Operations Cloud</p>
+          <h1 className="text-4xl font-black text-slate-900 mb-1 tracking-tighter">TEAMS</h1>
+          <p className="text-slate-400 font-bold text-[10px] tracking-[0.3em] uppercase opacity-60">Operational Cloud</p>
         </div>
 
-        <div className="w-full max-w-sm bg-white border border-slate-100 p-8 rounded-[3.5rem] shadow-2xl shadow-slate-200/40 space-y-6 animate-spring stagger-1">
+        <div className="w-full max-w-sm bg-white p-8 rounded-4xl shadow-xl shadow-slate-200/50 space-y-6 border border-slate-100">
           <div className="flex bg-slate-50 p-1.5 rounded-2xl">
-            <button onClick={() => setAuthMode('LOGIN')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${authMode === 'LOGIN' ? 'bg-white shadow-sm text-brand' : 'text-slate-400'}`}>LOGIN</button>
-            <button onClick={() => setAuthMode('SIGN_UP')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${authMode === 'SIGN_UP' ? 'bg-white shadow-sm text-brand' : 'text-slate-400'}`}>JOIN</button>
+            <button onClick={() => setAuthMode('LOGIN')} className={`flex-1 py-3 rounded-xl text-[10px] font-black tracking-widest transition-all ${authMode === 'LOGIN' ? 'bg-white shadow-sm text-brand' : 'text-slate-400'}`}>LOGIN</button>
+            <button onClick={() => setAuthMode('SIGN_UP')} className={`flex-1 py-3 rounded-xl text-[10px] font-black tracking-widest transition-all ${authMode === 'SIGN_UP' ? 'bg-white shadow-sm text-brand' : 'text-slate-400'}`}>JOIN</button>
           </div>
           
-          <div className="space-y-4 text-left">
+          <div className="space-y-4">
             {authMode === 'FORGOT' ? (
-              <div className="animate-slide">
-                <button onClick={() => setAuthMode('LOGIN')} className="text-[10px] font-black text-slate-400 uppercase mb-4 block"><i className="fas fa-arrow-left mr-1"></i> Back</button>
-                <h3 className="text-xl font-black text-slate-800 mb-6">Recovery</h3>
-                <input type="email" placeholder="Email" className="w-full input-m3 mb-4" value={email} onChange={(e) => setEmail(e.target.value)} />
-                {recoveryStep === 'RESET' && <input type="password" placeholder="New Password" className="w-full input-m3" value={password} onChange={(e) => setPassword(e.target.value)} />}
-                <button onClick={handleRecovery} className="w-full py-5 btn-primary mt-6">{isProcessing ? 'Syncing...' : 'Continue'}</button>
+              <div className="animate-m3 text-left">
+                <button onClick={() => setAuthMode('LOGIN')} className="text-[10px] font-black text-slate-400 uppercase mb-4 flex items-center gap-1"><i className="fas fa-chevron-left"></i> Back</button>
+                <input type="email" placeholder="Email Address" className="w-full bg-slate-50 p-5 rounded-2xl border-none focus:ring-2 focus:ring-brand font-bold" value={email} onChange={(e) => setEmail(e.target.value)} />
+                {recoveryStep === 'RESET' && <input type="password" placeholder="New Password" className="w-full bg-slate-50 p-5 rounded-2xl border-none focus:ring-2 focus:ring-brand font-bold mt-4" value={password} onChange={(e) => setPassword(e.target.value)} />}
+                <button onClick={handleRecovery} className="w-full py-5 bg-brand text-white rounded-3xl font-black uppercase tracking-widest mt-6 shadow-xl shadow-brand/30">{isProcessing ? 'Syncing...' : 'Continue'}</button>
               </div>
             ) : (
-              <div className="animate-spring">
+              <div className="animate-m3 space-y-4">
                 {authMode === 'SIGN_UP' && (
-                  <input type="text" placeholder="Name" className="w-full input-m3 mb-4" value={name} onChange={(e) => setName(e.target.value)} />
+                  <input type="text" placeholder="Full Name" className="w-full bg-slate-50 p-5 rounded-2xl border-none focus:ring-2 focus:ring-brand font-bold" value={name} onChange={(e) => setName(e.target.value)} />
                 )}
-                <input type="email" placeholder="Email" className="w-full input-m3 mb-4" value={email} onChange={(e) => setEmail(e.target.value)} />
-                <input type="password" placeholder="Password" className="w-full input-m3" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <input type="email" placeholder="Email" className="w-full bg-slate-50 p-5 rounded-2xl border-none focus:ring-2 focus:ring-brand font-bold" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input type="password" placeholder="Password" className="w-full bg-slate-50 p-5 rounded-2xl border-none focus:ring-2 focus:ring-brand font-bold" value={password} onChange={(e) => setPassword(e.target.value)} />
                 
                 {authMode === 'LOGIN' && (
-                  <button onClick={() => setAuthMode('FORGOT')} className="text-[9px] font-black text-brand uppercase mt-3 ml-2 hover:underline">Forgot Key?</button>
+                  <button onClick={() => setAuthMode('FORGOT')} className="text-[9px] font-black text-brand uppercase mt-2 block text-left ml-2">Trouble Accessing?</button>
                 )}
 
-                {authError && <p className="text-[10px] font-black uppercase text-center mt-4 text-rose-500">{authError}</p>}
+                {authError && <p className="text-[10px] font-black uppercase text-rose-500 bg-rose-50 p-3 rounded-xl">{authError}</p>}
                 
                 {authMode === 'SIGN_UP' && (
-                  <div className="flex items-center gap-3 p-5 bg-indigo-50/50 rounded-3xl mt-4 border border-indigo-100">
-                    <input type="checkbox" id="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="w-6 h-6 accent-brand rounded-lg cursor-pointer" />
-                    <label htmlFor="terms" className="text-[11px] text-brand font-bold leading-none cursor-pointer">I'll be a cool team player 🤝</label>
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl text-left">
+                    <input type="checkbox" id="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="w-5 h-5 accent-brand rounded cursor-pointer" />
+                    <label htmlFor="terms" className="text-[10px] text-slate-500 font-bold leading-tight cursor-pointer">Agree to Team Operational Guidelines</label>
                   </div>
                 )}
-                <button onClick={handleAuth} className="btn-primary w-full py-6 text-sm tracking-widest uppercase mt-6">{isProcessing ? 'Verifying...' : authMode === 'LOGIN' ? 'Access Hub' : 'Register Now'}</button>
+                <button onClick={handleAuth} className="w-full py-6 bg-brand text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-brand/20 btn-bounce">{isProcessing ? 'Verifying...' : authMode === 'LOGIN' ? 'Enter Hub' : 'Register Now'}</button>
               </div>
             )}
           </div>
         </div>
       </div>
     );
+  }
+
+  if (!user.roomId || showRoomSetup) {
+    return <RoomManager user={user} onUpdate={onRoomUpdated} onCancel={user.roomId ? () => setShowRoomSetup(false) : undefined} />;
   }
 
   return (
@@ -232,8 +243,8 @@ const App: React.FC = () => {
           <div className="notification-toast animate-toast">
             <img src={activeToast.avatar} className="w-10 h-10 rounded-xl bg-white/10" alt="" />
             <div className="flex-1">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">New Scope Assigned</p>
-              <p className="text-sm font-bold truncate">"{activeToast.task}" from {activeToast.from}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-60 leading-none mb-1">Incoming Sync</p>
+              <p className="text-xs font-bold truncate">Task "{activeToast.task}" from {activeToast.from}</p>
             </div>
             <button onClick={() => setActiveToast(null)} className="p-2 opacity-40"><i className="fas fa-times"></i></button>
           </div>
@@ -241,7 +252,7 @@ const App: React.FC = () => {
       )}
 
       <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-        <div className="animate-spring">
+        <div className="animate-m3">
           {activeTab === 'ALL_TASKS' && <TaskBoard mode="ALL" user={user} />}
           {activeTab === 'MY_TASKS' && <TaskBoard mode="MY" user={user} />}
           {activeTab === 'DASHBOARD' && <Dashboard user={user} />}
@@ -250,10 +261,7 @@ const App: React.FC = () => {
             <Profile 
               user={user} 
               onLogout={() => { db.logout(); setUser(null); }} 
-              onSwitchRoom={() => {
-                setUser({...db.getCurrentUser()!});
-                lastCheckRef.current = Date.now();
-              }} 
+              onSwitchRoom={() => setUser({...db.getCurrentUser()!})} 
               onAddRoom={() => setShowRoomSetup(true)}
             />
           )}

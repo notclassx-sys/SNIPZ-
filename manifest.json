@@ -1,0 +1,103 @@
+
+{
+  "id": "com.snipx.teams.workspace.v1",
+  "name": "TEAMS Workspace",
+  "short_name": "TEAMS",
+  "description": "Premium real-time team collaboration hub for high-performance teams.",
+  "lang": "en-US",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "minimal-ui",
+    "standalone"
+  ],
+  "background_color": "#ffffff",
+  "theme_color": "#3b33ff",
+  "orientation": "portrait",
+  "categories": [
+    "productivity",
+    "business",
+    "communication"
+  ],
+  "icons": [
+    {
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=192&height=192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=512&height=512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=512&height=512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://images.unsplash.com/photo-1611224923853-80b023f02d71?auto=format&fit=crop&q=80&w=1080&h=1920",
+      "sizes": "1080x1920",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Mobile Operations Dashboard"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1920&h=1080",
+      "sizes": "1920x1080",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Desktop Operations Center"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Scope",
+      "url": "/?tab=MY_TASKS",
+      "icons": [
+        {
+          "src": "https://api.dicebear.com/7.x/initials/png?seed=SNIPX&backgroundColor=3b33ff&width=192&height=192",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "iarc_rating_id": "e8498616-291d-4043-85e6-4299863c3214",
+  "scope_extensions": [
+    {
+      "origin": "https://snipz-xi.vercel.app"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "text/plain": [
+          ".txt"
+        ],
+        "application/pdf": [
+          ".pdf"
+        ],
+        "image/*": [
+          ".png",
+          ".jpg",
+          ".jpeg"
+        ]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "handle_links": "auto"
+}

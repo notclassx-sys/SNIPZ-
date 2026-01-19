@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Room } from '../types';
 import { db } from '../services/mockDb';
+import { adService } from '../services/adService';
 
 interface ProfileProps {
   user: User;
@@ -14,6 +15,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout, onSwitchRoom, onAddRo
   const [activeRoom, setActiveRoom] = useState<Room | null>(null);
   const [allRooms, setAllRooms] = useState<Room[]>([]);
   const [copied, setCopied] = useState(false);
+  const [isSupporter, setIsSupporter] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,6 +42,19 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout, onSwitchRoom, onAddRo
     }
   };
 
+  const handleSupportClick = () => {
+    // REWARDED AD TRIGGER
+    const triggered = adService.requestRewarded();
+    if (triggered) {
+      // In a real app, you would listen for a callback from Android like 'onRewardReceived'
+      // For this demo, we'll simulate the reward after a delay or just assume it starts
+      setTimeout(() => setIsSupporter(true), 1000); 
+    } else {
+      // If not on Android, just simulate for web demo
+      setIsSupporter(true);
+    }
+  };
+
   const handleSwitch = async (roomId: string) => {
     if (roomId === user.roomId) return;
     (window as any).haptic?.('heavy');
@@ -63,8 +78,8 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout, onSwitchRoom, onAddRo
                alt={user.name} 
              />
           </div>
-          <div className="absolute -bottom-1 -right-1 w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center border-4 border-white shadow-lg">
-            <i className="fas fa-fingerprint text-white text-xs"></i>
+          <div className={`absolute -bottom-1 -right-1 w-10 h-10 rounded-2xl flex items-center justify-center border-4 border-white shadow-lg transition-colors ${isSupporter ? 'bg-amber-400' : 'bg-emerald-500'}`}>
+            <i className={`fas ${isSupporter ? 'fa-crown' : 'fa-fingerprint'} text-white text-xs`}></i>
           </div>
         </div>
         <div className="mt-6">
@@ -72,6 +87,39 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout, onSwitchRoom, onAddRo
           <p className="text-slate-400 font-bold text-sm tracking-wide mt-1">{user.email}</p>
         </div>
       </div>
+
+      {/* REWARDED AD SECTION */}
+      {!isSupporter && (
+        <section className="bg-indigo-600 rounded-[2.5rem] p-6 text-white shadow-xl shadow-indigo-200">
+          <div className="flex items-center gap-4 mb-4">
+             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+               <i className="fas fa-gem text-xl"></i>
+             </div>
+             <div className="flex-1">
+                <h4 className="font-black text-sm uppercase tracking-widest">Support Platform</h4>
+                <p className="text-[10px] font-bold opacity-80">Watch a quick ad to get supporter status</p>
+             </div>
+          </div>
+          <button 
+            onClick={handleSupportClick}
+            className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest btn-bounce shadow-lg"
+          >
+            Become a Supporter
+          </button>
+        </section>
+      )}
+
+      {isSupporter && (
+        <section className="bg-amber-50 rounded-[2.5rem] p-6 border-2 border-amber-200 text-amber-800 animate-spring">
+          <div className="flex items-center gap-4">
+             <i className="fas fa-crown text-2xl text-amber-500"></i>
+             <div className="flex-1">
+                <h4 className="font-black text-sm uppercase tracking-widest">Workspace Supporter</h4>
+                <p className="text-[10px] font-bold">Premium operational status active</p>
+             </div>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-4">
         <div className="flex justify-between items-end px-1">

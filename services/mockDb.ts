@@ -50,6 +50,12 @@ class DbService {
       const payload: any = { last_active: toDbTime() };
       if (roomId) payload.room_id = roomId;
       await supabase.from('profiles').update(payload).eq('id', userId);
+      
+      // Sync local user object
+      if (this.currentUser && this.currentUser.id === userId) {
+        this.currentUser.lastActive = Date.now();
+        localStorage.setItem('snipx_user', JSON.stringify(this.currentUser));
+      }
     } catch (e) {
       console.error('Heartbeat failed:', e);
     }
@@ -171,6 +177,9 @@ class DbService {
       
       if (!membership) return false;
 
+      // Update room_id in profiles table too
+      await supabase.from('profiles').update({ room_id: roomId }).eq('id', user.id);
+
       const updatedUser = { ...user, roomId, role: membership.role as UserRole };
       await this.setCurrentUser(updatedUser);
       return true;
@@ -187,12 +196,14 @@ class DbService {
 
       const newRoom: Room = { id: data[0].id, name: data[0].name, adminId: data[0].admin_id, inviteCode: data[0].invite_code };
       
-      // Register membership
       await supabase.from('room_members').insert({
         user_id: admin.id,
         room_id: newRoom.id,
         role: 'ADMIN'
       });
+
+      // Explicitly update profile
+      await supabase.from('profiles').update({ room_id: newRoom.id, role: 'ADMIN' }).eq('id', admin.id);
 
       if (this.currentUser) {
         this.currentUser.roomId = newRoom.id;
@@ -210,12 +221,14 @@ class DbService {
       const { data: room, error } = await supabase.from('rooms').select('*').eq('invite_code', inviteCode.toUpperCase()).maybeSingle();
       if (error || !room) return null;
 
-      // Register membership
       await supabase.from('room_members').upsert({
         user_id: user.id,
         room_id: room.id,
         role: 'MEMBER'
       });
+
+      // Explicitly update profile
+      await supabase.from('profiles').update({ room_id: room.id, role: 'MEMBER' }).eq('id', user.id);
 
       if (this.currentUser) {
         this.currentUser.roomId = room.id;
@@ -379,7 +392,6 @@ class DbService {
         room_id: roomId, 
         sender_id: senderId, 
         sender_name: senderName, 
-        // FIX: Ensure text is never null to satisfy NOT NULL constraints in Supabase
         text: text || "",
         timestamp: msgTime
       };
@@ -428,7 +440,7 @@ class DbService {
     try {
       await supabase.from('task_logs').insert([{
         task_id: log.taskId, task_name: log.taskName, room_id: log.roomId,
-        from__user_id: log.fromUserId, from_user_name: log.fromUserName,
+        from_user_id: log.fromUserId, from_user_name: log.fromUserName,
         to_user_id: log.toUserId, to_user_name: log.toUserName,
         action: log.action,
         timestamp: toDbTime()
@@ -438,7 +450,6 @@ class DbService {
     }
   }
 
-  // Fix: Added findUserByEmail to satisfy requirement in App.tsx
   async findUserByEmail(email: string): Promise<string | null> {
     try {
       const { data, error } = await supabase
@@ -453,7 +464,6 @@ class DbService {
     }
   }
 
-  // Fix: Added updatePassword to satisfy requirement in App.tsx
   async updatePassword(userId: string, newPassword: string): Promise<boolean> {
     try {
       const { error } = await supabase
